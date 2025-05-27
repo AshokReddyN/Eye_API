@@ -1,0 +1,6 @@
+version: "3"  # latest version of the docker compose
+services:
+  nayonika-apis:  # container name
+    image: nayonika-api-img # image name
+    ports:
+      - 8080:8080  # host port:container port

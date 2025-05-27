@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: api
+  data:
+    mongodb:
+      uri: mongodb+srv://nayonikaeyecare:b7yjInwQUxCCghBT@nayonikacluster.fqrcfog.mongodb.net/nayonikaDev
+      database: nayonikaDev
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+server:
+  port: 8081
+
+jwt:
+  secret: "thisisasecretkeythatis32byteslongButNotReallyAndItShouldBeKeptSecret"
+  expiration: 3600
+auth:
+  excluded:
+    path: /auth,/v3/api-docs,/swagger-ui,/swagger-resources

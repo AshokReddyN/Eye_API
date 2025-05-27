@@ -1,0 +1,19 @@
+spring:
+  data:
+    mongodb:
+      uri: ${MONGODB_URI}
+      database: ${MONGODB_DATABASE}
+server:
+  port: 8080
+logging:
+  level:
+    root: DEBUG
+    com:
+      nayonikaeyecare: DEBUG
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 3600
+
+auth:
+  excluded:
+    path: /auth,/v3/api-docs,/swagger-ui,/swagger-resources
