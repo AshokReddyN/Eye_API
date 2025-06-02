@@ -20,6 +20,7 @@ public record ReferralResponse(
         String patientId,
         String patientName,
         String ageRange,
+        String gender,
         String hospitalName,
         String city,
         String state,

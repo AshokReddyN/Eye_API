@@ -22,6 +22,7 @@ public class ReferralMapper {
                 .patientId(new ObjectId(request.patientId()))
                 .patientName(request.patientName())
                 .ageRange(request.ageRange())
+                .gender(request.gender())
                 .hospitalName(request.hospitalName())
                 .city(request.city())
                 .state(request.state())
@@ -45,6 +46,7 @@ public class ReferralMapper {
                 referral.getPatientId().toString(),
                 referral.getPatientName(),
                 referral.getAgeRange(),
+                referral.getGender(),
                 referral.getHospitalName(),
                 referral.getCity(),
                 referral.getState(),
@@ -66,6 +68,7 @@ public class ReferralMapper {
         existingReferral.setPatientId(new ObjectId(request.patientId()));
         existingReferral.setPatientName(request.patientName());
         existingReferral.setAgeRange(request.ageRange());
+        existingReferral.setGender(request.gender());
         existingReferral.setHospitalName(request.hospitalName());
         existingReferral.setCity(request.city());
         existingReferral.setState(request.state()); // Assuming this was missed in the original code

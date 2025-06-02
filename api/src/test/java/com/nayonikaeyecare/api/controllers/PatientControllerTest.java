@@ -72,6 +72,8 @@ class PatientControllerTest {
         // testReferral = Referral.builder()
         //         .id(new org.bson.types.ObjectId()) // Example ObjectId
         //         .patientId(new org.bson.types.ObjectId("605c72ef2960e51e70a00000")) // Example ObjectId string
+        //         .ageRange("5-10") // Assuming ageRange was intended here
+        //         .gender("Female")
         //         .hospitalId(new org.bson.types.ObjectId("605c72ef2960e51e70a00001")) // Example ObjectId string
         //         .guardianContact("1234567890")
         //         .treatment("Eye Check")
@@ -149,6 +151,7 @@ class PatientControllerTest {
 //             "patientTestId", // patientId
 //             "Test Patient", // patientName
 //             "20-30", // ageRange
+//             "Male", // gender
 //             "Test Hospital", // hospitalName
 //             "Test City", // city
 //             "Test State", // state

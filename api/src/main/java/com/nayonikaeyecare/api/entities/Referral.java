@@ -28,6 +28,7 @@ public class Referral {
     private ObjectId patientId;
     private String patientName;
     private String ageRange;
+    private String gender;
     private String hospitalName;
     private String city;
     private String state;
