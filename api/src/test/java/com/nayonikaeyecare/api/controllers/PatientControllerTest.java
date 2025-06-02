@@ -70,9 +70,10 @@ class PatientControllerTest {
                 .build();
 
         // testReferral = Referral.builder()
-        //         .id("report-id")
-        //         .patientId("test-id")
-        //         .hospitalId("hospital-id")
+        //         .id(new org.bson.types.ObjectId()) // Example ObjectId
+        //         .patientId(new org.bson.types.ObjectId("605c72ef2960e51e70a00000")) // Example ObjectId string
+        //         .hospitalId(new org.bson.types.ObjectId("605c72ef2960e51e70a00001")) // Example ObjectId string
+        //         .guardianContact("1234567890")
         //         .treatment("Eye Check")
         //         .createdAt(new Date())
         //         .build();
@@ -143,7 +144,24 @@ class PatientControllerTest {
 
 //     @Test
 //     void createReferral_ShouldReturnSuccess() throws Exception {
-//         ReferralRequest referralRequest = new ReferralRequest();
+//         ReferralRequest referralRequest = new ReferralRequest(
+//             null, // status
+//             "patientTestId", // patientId
+//             "Test Patient", // patientName
+//             "20-30", // ageRange
+//             "Test Hospital", // hospitalName
+//             "Test City", // city
+//             "Test State", // state
+//             "TestGuardianContact123", // guardianContact
+//             "hospitalTestId", // hospitalId
+//             "ambassadorTestId", // ambassadorId
+//             java.util.Collections.emptyList(), // services
+//             "Test Treatment", // treatment
+//             null, // rightEye
+//             null, // leftEye
+//             new Date(), // createdAt
+//             new Date() // updatedAt
+//         );
 //         doNothing().when(patientService).createReferalForPatient(eq("test-id"), any());
 
 //         mockMvc.perform(put("/api/patient/createReferral/{id}", "test-id")

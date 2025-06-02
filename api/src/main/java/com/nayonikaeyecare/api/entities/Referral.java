@@ -30,7 +30,8 @@ public class Referral {
     private String ageRange;
     private String hospitalName;
     private String city;
-    private String state;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+    private String state;
+    private String guardianContact;
     private ObjectId hospitalId;
     private ObjectId ambassadorId;
     private List<ServiceType> services;

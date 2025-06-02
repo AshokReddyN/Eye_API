@@ -22,6 +22,7 @@ public record ReferralRequest(
         String hospitalName,
         String city,
         String state,
+        String guardianContact,
         String hospitalId,
         String ambassadorId,
         List<ServiceType> services,
