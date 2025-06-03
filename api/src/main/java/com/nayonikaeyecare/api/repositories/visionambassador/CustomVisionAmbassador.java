@@ -7,6 +7,6 @@ import com.nayonikaeyecare.api.dto.visionambassador.VisionAmbassadorResponse;
 
 public interface CustomVisionAmbassador {
 
-    Page<VisionAmbassadorResponse> filterVisionAmbassador(String state, String city, Pageable pageable);
+    Page<VisionAmbassadorResponse> filterVisionAmbassador(String searchString,Pageable pageable);
 
 }

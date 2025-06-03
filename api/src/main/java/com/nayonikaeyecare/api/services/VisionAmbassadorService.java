@@ -9,7 +9,7 @@ import com.nayonikaeyecare.api.dto.visionambassador.VisionAmbassadorResponse;
 import com.nayonikaeyecare.api.entities.VisionAmbassador;
 import com.nayonikaeyecare.api.entities.user.User;
 import com.nayonikaeyecare.api.exceptions.ResourceMissingException;
-
+import com.nayonikaeyecare.api.repositories.referral.ReferralRepository;
 import com.nayonikaeyecare.api.repositories.visionambassador.VisionAmbassadorRepository;
 
 import org.bson.types.ObjectId;
@@ -30,6 +30,7 @@ public class VisionAmbassadorService {
 
     private final VisionAmbassadorRepository visionAmbassadorRepository;
     private final UserService userService;
+    private final ReferralRepository referralRepository;
 
     public void createVisionAmbassador(VisionAmbassadorRequest visionAmbassadorRequest) {
         // Here you would typically save the Vision Ambassador to the database
@@ -53,12 +54,14 @@ public class VisionAmbassadorService {
         // Here you would typically retrieve the Vision Ambassador from the database
         List<VisionAmbassador> visionAmbassadors = visionAmbassadorRepository.findAll();
 
-        return visionAmbassadors.stream().map(visionAmbassador -> mapToVisionAmbassadorResponse(visionAmbassador))
-                .toList();
+        return visionAmbassadors.stream().map(visionAmbassador -> {
+            int referredPatientCount = referralRepository.findByAmbassadorId(visionAmbassador.getId()).size();
+            return mapToVisionAmbassadorResponse(visionAmbassador, referredPatientCount);
+        }).toList();
 
     }
 
-    private VisionAmbassadorResponse mapToVisionAmbassadorResponse(VisionAmbassador visionAmbassador) {
+    private VisionAmbassadorResponse mapToVisionAmbassadorResponse(VisionAmbassador visionAmbassador, int referredPatientCount) {
         return VisionAmbassadorResponse.builder()
                 .id(visionAmbassador.getId()!= null ? visionAmbassador.getId().toHexString() : null)
                 .name(visionAmbassador.getName())
@@ -67,6 +70,7 @@ public class VisionAmbassadorService {
                 .city(visionAmbassador.getCity())
                 .state(visionAmbassador.getState())
                 .language(visionAmbassador.getLanguage())
+                .patientCount(referredPatientCount)
                 .createdAt(visionAmbassador.getCreatedAt())
                 .updatedAt(visionAmbassador.getUpdatedAt())
                 .build();
@@ -75,7 +79,7 @@ public class VisionAmbassadorService {
     public VisionAmbassadorResponse getVisionAmbassadorById(String id) {
         VisionAmbassador visionambassador = visionAmbassadorRepository.findById(new ObjectId(id))
                 .orElseThrow(() -> new ResourceMissingException("Vision Ambassador not found with id: " + id));
-        return mapToVisionAmbassadorResponse(visionambassador);
+        return mapToVisionAmbassadorResponse(visionambassador,0);
     }
 
     public VisionAmbassadorResponse updateVisionAmbassador(String id, VisionAmbassadorRequest visionAmbassadorRequest) {
@@ -93,7 +97,8 @@ public class VisionAmbassadorService {
         existingVisionAmbassador.setUpdatedAt(new Date());
 
         VisionAmbassador updatedVisionAmbassador = visionAmbassadorRepository.save(existingVisionAmbassador);
-        return mapToVisionAmbassadorResponse(updatedVisionAmbassador);
+        // TODO: Update this to also fetch patient count if needed post-update
+        return mapToVisionAmbassadorResponse(updatedVisionAmbassador, 0); // Passing 0 for now
     }
 
     public void deleteVisionAmbassador(String id) {
@@ -103,9 +108,9 @@ public class VisionAmbassadorService {
         visionAmbassadorRepository.deleteById(new ObjectId(id));
     }
 
-    public Page<VisionAmbassadorResponse> filterVisionAmbassador(String state, String city,
+    public Page<VisionAmbassadorResponse> filterVisionAmbassador(String searchString,
             Pageable pageable) {
-        return visionAmbassadorRepository.filterVisionAmbassador(state, city, pageable);
+        return visionAmbassadorRepository.filterVisionAmbassador(searchString,pageable);
     }
 
     public VisionAmbassador findByUserId(String userId) {
@@ -132,3 +137,4 @@ public class VisionAmbassadorService {
     }
 
 }
+ 

@@ -25,24 +25,16 @@ import lombok.Builder;
  * @param googleLink  - String - link to google map
  */
 @Builder
+
 public record HospitalRequest(
-    @Size(max = 36, message = "ID must be less than 36 characters") String id,
-
+    @NotBlank(message = "Hospital code is required") @Size(max = 100, message = "Hospital Id must be less than 100 characters") String hospitalCode,
     @NotBlank(message = "Hospital name is required") @Size(max = 100, message = "Hospital name must be less than 100 characters") String name,
-
     @NotNull(message = "Address is required") @Valid Address address,
-
-    @NotNull(message = "Service is required") @Size(max = 500, message = "Services description must be less than 500 characters") List<String> services,
-
-    @NotNull(message = "Status is required") Boolean status,
-
     @Size(max = 100, message = "Coordinator name must be less than 100 characters") String coordinator,
-
-    @Pattern(
-    regexp = "^(\\d{10}|\\d{3,4}-\\d{6,8})$",
-    message = "Phone number must be a valid 10-digit mobile number or a landline number with area code (e.g., 080-67459834, 0413-2272901)") String coordinator_phonenumber,
-
+    String coordinator_phonenumber,
     @Pattern(regexp = "^[^\s@]+@[^\s@]+\\.[^\s@]+$", message = "Email must be a valid email address") String coordinator_email,
-
-    @Pattern(regexp = "^(https?://)?([\\da-z.-]+)\\.([a-z.]{2,6})[/\\w .-]*/?$", message = "Invalid URL format") String googleLink) {
-}
+    List<String> services,
+    String googleLink,
+    String registration_date,
+    Boolean status
+) {}

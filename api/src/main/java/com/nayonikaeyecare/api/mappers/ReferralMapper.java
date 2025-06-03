@@ -11,7 +11,7 @@ import com.nayonikaeyecare.api.entities.Status;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
-
+import java.time.LocalDateTime;
 
 @Component
 public class ReferralMapper {
@@ -22,9 +22,11 @@ public class ReferralMapper {
                 .patientId(new ObjectId(request.patientId()))
                 .patientName(request.patientName())
                 .ageRange(request.ageRange())
+                .gender(request.gender())
                 .hospitalName(request.hospitalName())
                 .city(request.city())
                 .state(request.state())
+                .guardianContact(request.guardianContact())
                 .hospitalId(new ObjectId(request.hospitalId()))
                 .ambassadorId(new ObjectId(request.ambassadorId()))
                 .services(request.services())
@@ -34,6 +36,9 @@ public class ReferralMapper {
                 // .remarks(request.remarks())
                 .createdAt(request.createdAt())
                 .updatedAt(request.updatedAt())
+                .isSpectacleRequested(request.isSpectacleRequested())
+                .spectacleRequestedOn(request.spectacleRequestedOn())
+                .hospitalCode(request.hospitalCode())
                 .build();
     }
 
@@ -44,9 +49,11 @@ public class ReferralMapper {
                 referral.getPatientId().toString(),
                 referral.getPatientName(),
                 referral.getAgeRange(),
+                referral.getGender(),
                 referral.getHospitalName(),
                 referral.getCity(),
                 referral.getState(),
+                referral.getGuardianContact(),
                 referral.getHospitalId().toString(),
                 referral.getAmbassadorId().toString(),
                 referral.getServices(),
@@ -55,7 +62,10 @@ public class ReferralMapper {
                 referral.getLeftEye(),
                 // referral.getRemarks(),
                 referral.getCreatedAt(),
-                referral.getUpdatedAt()
+                referral.getUpdatedAt(),
+                referral.getIsSpectacleRequested(),
+                referral.getSpectacleRequestedOn(),
+                referral.getHospitalCode()
         );
     }
 
@@ -64,8 +74,11 @@ public class ReferralMapper {
         existingReferral.setPatientId(new ObjectId(request.patientId()));
         existingReferral.setPatientName(request.patientName());
         existingReferral.setAgeRange(request.ageRange());
+        existingReferral.setGender(request.gender());
         existingReferral.setHospitalName(request.hospitalName());
         existingReferral.setCity(request.city());
+        existingReferral.setState(request.state());
+        existingReferral.setGuardianContact(request.guardianContact());
         existingReferral.setHospitalId(new ObjectId(request.hospitalId()));
         existingReferral.setAmbassadorId(new ObjectId(request.ambassadorId()));
         existingReferral.setServices(request.services());
@@ -74,6 +87,9 @@ public class ReferralMapper {
         existingReferral.setLeftEye(request.leftEye());
         // existingReferral.setRemarks(request.remarks());
         existingReferral.setUpdatedAt(new Date());
+        existingReferral.setIsSpectacleRequested(request.isSpectacleRequested());
+        existingReferral.setSpectacleRequestedOn(request.spectacleRequestedOn());
+        existingReferral.setHospitalCode(request.hospitalCode());
         return existingReferral;
     }
 }

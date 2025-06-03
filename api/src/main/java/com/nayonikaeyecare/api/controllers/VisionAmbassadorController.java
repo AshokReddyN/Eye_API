@@ -79,10 +79,11 @@ public class VisionAmbassadorController {
 
     @GetMapping("/filter")
     public ResponseEntity<Page<VisionAmbassadorResponse>> getPaginatedPatients(
-            @RequestParam(required = false) String state,
-            @RequestParam(required = false) String city,
+            // @RequestParam(required = false) String state,
+            // @RequestParam(required = false) String city,
+            @RequestParam(required = false) String searchString,
             Pageable pageable) {
-        return ResponseEntity.ok(visionAmbassadorService.filterVisionAmbassador(state, city, pageable));
+        return ResponseEntity.ok(visionAmbassadorService.filterVisionAmbassador(searchString,pageable));
     }
 
     @GetMapping("/user/{userId}")

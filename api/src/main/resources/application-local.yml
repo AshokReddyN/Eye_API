@@ -1,0 +1,15 @@
+spring:
+  data:
+    mongodb:
+      uri: mongodb+srv://nayonikamanager:tsJq4RcfhTFIGHQB@nayonikadev.1quayyj.mongodb.net/nayonikaDev
+      database: nayonikaDev
+server:
+  port: 8080
+
+jwt:
+  secret: "thisisasecretkeythatis32byteslongButNotReallyAndItShouldBeKeptSecret"
+  expiration: 3600
+
+auth:
+  excluded:
+    path: /auth,/v3/api-docs,/swagger-ui,/swagger-resources

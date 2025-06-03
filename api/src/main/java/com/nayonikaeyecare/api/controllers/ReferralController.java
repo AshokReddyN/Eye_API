@@ -10,6 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
+import com.nayonikaeyecare.api.dto.referral.BulkReferralUpdateRequest;
+import com.nayonikaeyecare.api.dto.referral.BulkReferralUpdateResponse;
 import com.nayonikaeyecare.api.dto.referral.ReferralRequest;
 import com.nayonikaeyecare.api.dto.referral.ReferralResponse;
 import com.nayonikaeyecare.api.services.ReferralService;
@@ -105,6 +107,11 @@ public ResponseEntity<Page<ReferralResponse>> getReferralsByHospitalIdPaginated(
         }
     }
 
+    @PostMapping("/bulk-update")
+    public ResponseEntity<BulkReferralUpdateResponse> bulkUpdateReferrals(@Valid @RequestBody List<BulkReferralUpdateRequest> bulkRequest) {
+        BulkReferralUpdateResponse response = referralService.bulkUpdateReferrals(bulkRequest);
+        return ResponseEntity.ok(response);
+    }
     /**
      * Utility method to safely convert String to ObjectId.
      */
@@ -116,4 +123,6 @@ public ResponseEntity<Page<ReferralResponse>> getReferralsByHospitalIdPaginated(
         }
     }
 }
+
+
 

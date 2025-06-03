@@ -25,6 +25,7 @@ import com.nayonikaeyecare.api.repositories.user.UserNotFoundException;
 import com.nayonikaeyecare.api.repositories.user.UserRepository;
 import com.nayonikaeyecare.api.repositories.user.UserSessionRepository;
 import com.nayonikaeyecare.api.security.JWTTokenProvider;
+import java.util.Date;
 
 import jakarta.annotation.Nonnull;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +54,7 @@ public class UserService {
                 .firstName(userRequest.firstName())
                 .lastName(userRequest.lastName())
                 .phoneNumber(userRequest.phoneNumber())
+                .createdAt(new java.util.Date())
                 .status(UserStatus.ACTIVE)
                 .build();
         userRepository.save(newUser);
@@ -213,6 +215,7 @@ public class UserService {
                 // Create a new user with the provided details
                 User user = User.builder()
                         .userCredentialId(userCredential.getId())
+                        .createdAt(new java.util.Date())
                         .build();
                 userRepository.save(user);
                 userCreated = true;

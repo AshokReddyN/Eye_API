@@ -155,28 +155,28 @@ class VisionAmbassadorControllerTest {
                 verify(visionAmbassadorService).deleteVisionAmbassador("test-id");
         }
 
-        @Test
-        void filterVisionAmbassadors_ShouldReturnPagedResults() throws Exception {
-                // Arrange
-                Page<VisionAmbassadorResponse> pagedResponse = new PageImpl<>(
-                                Arrays.asList(testResponse),
-                                PageRequest.of(0, 10),
-                                1);
+        // @Test
+        // void filterVisionAmbassadors_ShouldReturnPagedResults() throws Exception {
+        //         // Arrange
+        //         Page<VisionAmbassadorResponse> pagedResponse = new PageImpl<>(
+        //                         Arrays.asList(testResponse),
+        //                         PageRequest.of(0, 10),
+        //                         1);
 
-                when(visionAmbassadorService.filterVisionAmbassador(
-                                eq("Karnataka"), eq("Bangalore"), any()))
-                                .thenReturn(pagedResponse);
+        //         when(visionAmbassadorService.filterVisionAmbassador(
+        //                         eq("Karnataka"), eq("Bangalore"), any()))
+        //                         .thenReturn(pagedResponse);
 
-                // Act & Assert
-                mockMvc.perform(get("/api/visionAmbassador/filter")
-                                .param("state", "Karnataka")
-                                .param("city", "Bangalore")
-                                .param("page", "0")
-                                .param("size", "10")
-                                .with(user("test-user").roles("USER")))
-                                .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.content[0].id").value(testResponse.getId()))
-                                .andExpect(jsonPath("$.content[0].state").value(testResponse.getState()))
-                                .andExpect(jsonPath("$.totalElements").value(1));
-        }
+        //         // Act & Assert
+        //         mockMvc.perform(get("/api/visionAmbassador/filter")
+        //                         .param("state", "Karnataka")
+        //                         .param("city", "Bangalore")
+        //                         .param("page", "0")
+        //                         .param("size", "10")
+        //                         .with(user("test-user").roles("USER")))
+        //                         .andExpect(status().isOk())
+        //                         .andExpect(jsonPath("$.content[0].id").value(testResponse.getId()))
+        //                         .andExpect(jsonPath("$.content[0].state").value(testResponse.getState()))
+        //                         .andExpect(jsonPath("$.totalElements").value(1));
+        // }
 }

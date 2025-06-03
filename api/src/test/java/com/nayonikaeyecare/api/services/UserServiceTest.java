@@ -60,6 +60,7 @@ class UserServiceTest {
                 .firstName("John")
                 .lastName("Doe")
                 .phoneNumber("1234567890")
+                .createdAt(new java.util.Date())
                 .build();
 
         when(userRepository.save(any(User.class))).thenReturn(user);

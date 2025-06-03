@@ -28,12 +28,16 @@ public class HospitalService {
         validateHospitalRequest(hospitalRequest);
 
         Hospital hospital = Hospital.builder()
+                .hospitalCode(hospitalRequest.hospitalCode())
                 .name(hospitalRequest.name())
                 .address(hospitalRequest.address())
                 .services(hospitalRequest.services())
                 .status(hospitalRequest.status())
                 .coordinator(hospitalRequest.coordinator())
+                .coordinator_phonenumber(hospitalRequest.coordinator_phonenumber())
+                .coordinator_email(hospitalRequest.coordinator_email())
                 .googleLink(hospitalRequest.googleLink())
+                .registration_date(hospitalRequest.registration_date())
                 .build();
 
         Hospital savedHospital = hospitalRepository.save(hospital);
@@ -60,12 +64,16 @@ public class HospitalService {
         Hospital existingHospital = hospitalRepository.findById(objectId)
                 .orElseThrow(() -> new ResourceMissingException("Hospital not found with id: " + id));
 
+        existingHospital.setHospitalCode(hospitalRequest.hospitalCode());
         existingHospital.setName(hospitalRequest.name());
         existingHospital.setAddress(hospitalRequest.address());
         existingHospital.setServices(hospitalRequest.services());
         existingHospital.setStatus(hospitalRequest.status());
         existingHospital.setCoordinator(hospitalRequest.coordinator());
+        existingHospital.setCoordinator_phonenumber(hospitalRequest.coordinator_phonenumber());
+        existingHospital.setCoordinator_email(hospitalRequest.coordinator_email());
         existingHospital.setGoogleLink(hospitalRequest.googleLink());
+        existingHospital.setRegistration_date(hospitalRequest.registration_date());
 
         Hospital updatedHospital = hospitalRepository.save(existingHospital);
         return HospitalMapper.mapToHospitalResponse(updatedHospital);
@@ -102,9 +110,9 @@ public class HospitalService {
         }
     }
 
-    public Page<HospitalResponse> filterHospitals(String state, List cities, Boolean status, String name,List<String> serviceTypes,
+    public Page<HospitalResponse> filterHospitals(String state, List cities, Boolean status, String searchString,List<String> serviceTypes,
             Pageable pageable) {
-        return hospitalRepository.filterHospitals(state, cities, status, name,serviceTypes, pageable);
+        return hospitalRepository.filterHospitals(state, cities, status, searchString,serviceTypes,pageable);
     }
 
     public void saveAllHospitals(List<HospitalRequest> hospitalRequests) {
@@ -118,6 +126,7 @@ public class HospitalService {
         // Convert all requests to entities
         List<Hospital> hospitals = hospitalRequests.stream()
                 .map(request -> Hospital.builder()
+                        .hospitalCode(request.hospitalCode())
                         .name(request.name())
                         .address(request.address())
                         .services(request.services())
@@ -126,10 +135,43 @@ public class HospitalService {
                         .coordinator_phonenumber(request.coordinator_phonenumber())
                         .coordinator_email(request.coordinator_email())
                         .googleLink(request.googleLink())
+                        .registration_date(request.registration_date())
                         .build())
                 .toList();
 
         // Save all in batch
         hospitalRepository.saveAll(hospitals);
     }
+
+    public int saveAllHospitalsIfNameNotExists(List<HospitalRequest> hospitalRequests) {
+        int inserted = 0;
+        if (hospitalRequests == null || hospitalRequests.isEmpty()) {
+            throw new IllegalArgumentException("Hospital requests list cannot be null or empty");
+        }
+        hospitalRequests.forEach(this::validateHospitalRequest);
+    
+        List<Hospital> hospitalsToInsert = hospitalRequests.stream()
+                .filter(request -> !hospitalRepository.existsByName(request.name()))
+                .map(request -> Hospital.builder()
+                        .hospitalCode(request.hospitalCode())
+                        .name(request.name())
+                        .address(request.address())
+                        .services(request.services())
+                        .status(request.status())
+                        .coordinator(request.coordinator())
+                        .coordinator_phonenumber(request.coordinator_phonenumber())
+                        .coordinator_email(request.coordinator_email())
+                        .googleLink(request.googleLink())
+                        .registration_date(request.registration_date())
+                        .build())
+                .toList();
+    
+        if (hospitalsToInsert.isEmpty()) {
+            throw new IllegalArgumentException("No new hospitals to save");
+        } else {
+            inserted = hospitalRepository.saveAll(hospitalsToInsert).size();
+        }
+    
+        return inserted;
+    }        
 }

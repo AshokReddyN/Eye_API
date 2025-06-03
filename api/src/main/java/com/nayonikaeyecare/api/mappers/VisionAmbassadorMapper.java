@@ -2,20 +2,21 @@ package com.nayonikaeyecare.api.mappers;
 
 import com.nayonikaeyecare.api.dto.visionambassador.VisionAmbassadorResponse;
 import com.nayonikaeyecare.api.entities.VisionAmbassador; // Import the missing class
+import com.nayonikaeyecare.api.entities.user.User; // Import the missing class
 
 public class VisionAmbassadorMapper {
 
-    public static VisionAmbassadorResponse mapToVisionAmbassadorResponse(VisionAmbassador visionAmbassador) {
+    public static VisionAmbassadorResponse mapToVisionAmbassadorResponse(User user) {
         return VisionAmbassadorResponse.builder()
-                .id(visionAmbassador.getId()!= null ? visionAmbassador.getId().toHexString() : null)
-                .name(visionAmbassador.getName())
-                .phoneNumber(visionAmbassador.getPhoneNumber())
-                .status(visionAmbassador.isStatus())
-                .city(visionAmbassador.getCity())
-                .state(visionAmbassador.getState())
-                .language(visionAmbassador.getLanguage())
-                .createdAt(visionAmbassador.getCreatedAt())
-                .updatedAt(visionAmbassador.getUpdatedAt())
+                .id(user.getId()!= null ? user.getId().toHexString() : null)
+                .name((user.getFirstName()) + " " + (user.getLastName() != null ? user.getLastName() : ""))
+                .phoneNumber(user.getPhoneNumber())
+                // .status(user.getStatus())
+                .city(user.getCity())
+                .state(user.getState())
+                .language(user.getLanguage())
+                .createdAt(user.getCreatedAt())
+                // .updatedAt(user.getUpdatedAt())
                 .build();
     }
 }

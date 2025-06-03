@@ -23,7 +23,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class HospitalController {
 
-
     private final HospitalService hospitalService;
 
     @PostMapping
@@ -78,10 +77,10 @@ public class HospitalController {
             @RequestParam(required = false) String state,
             @RequestParam(required = false) List<String> cities,
             @RequestParam(required = false) Boolean status,
-            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String searchString,
             @RequestParam(required = false) List<String> services,
             Pageable pageable) {
-        return ResponseEntity.ok(hospitalService.filterHospitals(state, cities, status, name,services,pageable));
+        return ResponseEntity.ok(hospitalService.filterHospitals(state, cities, status, searchString,services,pageable));
     }
 
     @PostMapping("/bulk-upload")
@@ -91,8 +90,8 @@ public class HospitalController {
                 return ResponseEntity.badRequest().body("No Hospital data provided");
             }
 
-            hospitalService.saveAllHospitals(hospitals);
-            return ResponseEntity.ok("Successfully uploaded and saved " + hospitals.size() + " hospitals");
+            int insertedCount = hospitalService.saveAllHospitalsIfNameNotExists(hospitals);
+            return ResponseEntity.ok("Successfully uploaded and saved " + insertedCount + " hospitals (skipped duplicates)");
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)

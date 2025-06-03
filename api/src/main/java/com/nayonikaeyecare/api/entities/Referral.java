@@ -12,6 +12,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.util.Date;
 import java.util.List;
+import java.time.LocalDateTime;
 
 @Document(value = "referrals")
 @CompoundIndexes({
@@ -22,15 +23,18 @@ import java.util.List;
 @Builder
 @Data
 public class Referral {
+
     @Id
     private ObjectId id;
     private Status status;
     private ObjectId patientId;
     private String patientName;
     private String ageRange;
+    private String gender;
     private String hospitalName;
     private String city;
-    private String state;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+    private String state;
+    private String guardianContact;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
     private ObjectId hospitalId;
     private ObjectId ambassadorId;
     private List<ServiceType> services;
@@ -40,4 +44,8 @@ public class Referral {
     private String remarks;
     private Date createdAt;
     private Date updatedAt;
+    private Boolean isSpectacleRequested;
+    private String spectacleRequestedOn;
+    private String hospitalCode;
+    
 }

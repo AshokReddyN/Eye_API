@@ -10,6 +10,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 @Document(value = "hospitals")
 @AllArgsConstructor
@@ -20,6 +22,7 @@ import lombok.NoArgsConstructor;
 public class Hospital {
     @Id
     private ObjectId id;
+    private String hospitalCode;
     private String name;
     private Address address;
     private List<String> services;
@@ -28,4 +31,5 @@ public class Hospital {
     private String coordinator_phonenumber;
     private String coordinator_email;
     private String googleLink;
+    private String registration_date;
 }

@@ -10,6 +10,6 @@ import com.nayonikaeyecare.api.dto.hospital.HospitalResponse;
 
 public interface CustomHospitalRepository {
     
-    Page<HospitalResponse> filterHospitals(String state, List<String> cities, Boolean status, String name,List<String> serviceTypes,Pageable pageable);
+    Page<HospitalResponse> filterHospitals(String state, List<String> cities, Boolean status, String searchString,List<String> serviceTypes,Pageable pageable);
 }
 

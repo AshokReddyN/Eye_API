@@ -11,6 +11,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
 
 @Builder
 
@@ -20,9 +21,11 @@ public record ReferralResponse(
         String patientId,
         String patientName,
         String ageRange,
+        String gender,
         String hospitalName,
         String city,
         String state,
+        String guardianContact,
         String hospitalId,
         String ambassadorId,
         List<ServiceType> services,
@@ -31,5 +34,8 @@ public record ReferralResponse(
         EyeDetails leftEye,
         //String remarks,
         Date createdAt,
-        Date updatedAt
+        Date updatedAt,
+        Boolean isSpectacleRequested,
+        String spectacleRequestedOn,
+        String hospitalCode
 ) {}

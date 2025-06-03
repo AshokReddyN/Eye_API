@@ -8,6 +8,7 @@ public class HospitalMapper {
     public static HospitalResponse mapToHospitalResponse(Hospital hospital) {
         return new HospitalResponse(
             hospital.getId()!= null ? hospital.getId().toHexString() : null,
+            hospital.getHospitalCode(),
             hospital.getName(),
             hospital.getAddress(),
             hospital.getServices(),
@@ -15,7 +16,8 @@ public class HospitalMapper {
             hospital.getCoordinator(),
             hospital.getCoordinator_phonenumber(),
             hospital.getCoordinator_email(),
-            hospital.getGoogleLink()
+            hospital.getGoogleLink(),
+            hospital.getRegistration_date()
         );
     }
 }

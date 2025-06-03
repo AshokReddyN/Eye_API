@@ -19,6 +19,7 @@ import lombok.Builder;
 @Builder
 public record HospitalResponse(
                 String id,
+                String hospitalCode,
                 String name,
                 Address address,
                 List<String> services,
@@ -26,5 +27,6 @@ public record HospitalResponse(
                 String coordinator,
                 String coordinator_phonenumber,
                 String coordinator_email,
-                String googleLink) {
+                String googleLink,
+                String registration_date) {
 }

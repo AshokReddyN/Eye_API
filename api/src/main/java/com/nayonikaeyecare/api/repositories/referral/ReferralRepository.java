@@ -24,5 +24,7 @@ public interface ReferralRepository extends MongoRepository<Referral, ObjectId> 
 
     @Query("{ your_custom_query_here }")
     Page<Referral> filterReferrals(ObjectId ambassadorId, String state, String city, Boolean status, String name, Pageable pageable);
+    
+    List<Referral> findByPatientNameAndHospitalId(String patientName, ObjectId hospitalId);
 
 }

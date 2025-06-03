@@ -12,6 +12,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.Date;
 
 /**
  * User entity representing a user in the system.
@@ -58,4 +59,5 @@ public class User {
     List<Permission> permissions; // Permission entity representing the permissions associated with this user
 
     private String language;
+    private Date createdAt;
 }
