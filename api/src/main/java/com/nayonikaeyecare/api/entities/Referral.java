@@ -10,6 +10,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
@@ -40,4 +41,7 @@ public class Referral {
     private String remarks;
     private Date createdAt;
     private Date updatedAt;
+    private Boolean isSpectacleRequested;
+    private LocalDateTime spectacleRequestedOn;
+    private String hospitalCode;
 }

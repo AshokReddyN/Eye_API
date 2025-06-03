@@ -8,6 +8,7 @@ import com.nayonikaeyecare.api.dto.referral.ReferralResponse;
 import com.nayonikaeyecare.api.entities.Referral;
 import com.nayonikaeyecare.api.entities.ServiceType;
 import com.nayonikaeyecare.api.entities.Status;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -34,6 +35,9 @@ public class ReferralMapper {
                 // .remarks(request.remarks())
                 .createdAt(request.createdAt())
                 .updatedAt(request.updatedAt())
+                .isSpectacleRequested(request.isSpectacleRequested())
+                .spectacleRequestedOn(request.spectacleRequestedOn())
+                .hospitalCode(request.hospitalCode())
                 .build();
     }
 
@@ -55,7 +59,10 @@ public class ReferralMapper {
                 referral.getLeftEye(),
                 // referral.getRemarks(),
                 referral.getCreatedAt(),
-                referral.getUpdatedAt()
+                referral.getUpdatedAt(),
+                referral.getIsSpectacleRequested(),
+                referral.getSpectacleRequestedOn(),
+                referral.getHospitalCode()
         );
     }
 
@@ -74,6 +81,9 @@ public class ReferralMapper {
         existingReferral.setLeftEye(request.leftEye());
         // existingReferral.setRemarks(request.remarks());
         existingReferral.setUpdatedAt(new Date());
+        existingReferral.setIsSpectacleRequested(request.isSpectacleRequested());
+        existingReferral.setSpectacleRequestedOn(request.spectacleRequestedOn());
+        existingReferral.setHospitalCode(request.hospitalCode());
         return existingReferral;
     }
 }

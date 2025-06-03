@@ -1,5 +1,6 @@
 package com.nayonikaeyecare.api.dto.referral;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
@@ -31,5 +32,8 @@ public record ReferralResponse(
         EyeDetails leftEye,
         //String remarks,
         Date createdAt,
-        Date updatedAt
+        Date updatedAt,
+        Boolean isSpectacleRequested,
+        LocalDateTime spectacleRequestedOn,
+        String hospitalCode
 ) {}
