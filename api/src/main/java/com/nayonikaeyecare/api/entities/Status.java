@@ -9,5 +9,6 @@ public enum Status {
     COMPLETED,
     ACTIVE,
     INACTIVE,
-    DELIVERED
+    DELIVERED,
+    REFERRED
 }

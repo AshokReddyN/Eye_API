@@ -17,7 +17,9 @@ public class HospitalMapper {
             hospital.getCoordinator_phonenumber(),
             hospital.getCoordinator_email(),
             hospital.getGoogleLink(),
-            hospital.getRegistration_date()
+            hospital.getRegistration_date(),
+            0L, // Default value for referralCount
+            0L  // Default value for spectacleReferralCount
         );
     }
 }

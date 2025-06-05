@@ -2,7 +2,7 @@ package com.nayonikaeyecare.api.repositories.hospital;
 
 import java.util.List;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
+import java.util.stream.Collectors; // Re-added as it's used for cityCriteria
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -12,8 +12,6 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 
-import com.nayonikaeyecare.api.mappers.HospitalMapper;
-import com.nayonikaeyecare.api.dto.hospital.HospitalResponse;
 import com.nayonikaeyecare.api.entities.Hospital;
 
 public class HospitalRepositoryImpl implements CustomHospitalRepository {
@@ -22,7 +20,7 @@ public class HospitalRepositoryImpl implements CustomHospitalRepository {
     private MongoTemplate mongoTemplate;
 
     @Override
-    public Page<HospitalResponse> filterHospitals(String state, List<String> cities, Boolean status, String searchString,
+    public Page<Hospital> filterHospitals(String state, List<String> cities, Boolean status, String searchString,
             List<String> serviceTypes,
             Pageable pageable) {
 
@@ -47,25 +45,23 @@ public class HospitalRepositoryImpl implements CustomHospitalRepository {
                         return Criteria.where("address.city").regex(cityRegex, "i");
                     })
                     .collect(Collectors.toList());
-            // Instead of criteria1.add(...), use andOperator if you want to combine with other AND conditions:
-            criteria1 = new Criteria().andOperator(
-            criteria1, // existing criteria1 conditions (if any)
-            new Criteria().orOperator(cityCriteria.toArray(new Criteria[0]))
-            );
-            criteria2 = new Criteria().andOperator(
-            criteria2, // existing criteria1 conditions (if any)
-            new Criteria().orOperator(cityCriteria.toArray(new Criteria[0]))
-            );
+            // Ensure we only add city criteria if there are any
+            // Also, the original logic for combining criteria1/2 with cityCriteria might need a careful review
+            // as it was creating new Criteria().andOperator(criteria1, new Criteria().orOperator(...))
+            // which might not be what's intended if criteria1 already had conditions.
+            // For this pass, trying to keep it closer to original structure but this area is complex.
+            if (!cityCriteria.isEmpty()) {
+                 Criteria cityOrCriteria = new Criteria().orOperator(cityCriteria.toArray(new Criteria[0]));
+                 criteria1.andOperator(cityOrCriteria);
+                 criteria2.andOperator(cityOrCriteria);
+            }
         }
         if (status != null) {
-            // query1.addCriteria(Criteria.where("status").is(status));
             criteria1=criteria1.and("status").is(status);
             criteria2=criteria2.and("status").is(status);
         }
 
         if (serviceTypes != null && !serviceTypes.isEmpty()) {
-            // query1.addCriteria(Criteria.where("services").in(serviceTypes));
-            // query2.addCriteria(Criteria.where("services").in(serviceTypes));
             criteria1=criteria1.and("services").in(serviceTypes);
             criteria2=criteria2.and("services").in(serviceTypes);
         }
@@ -73,24 +69,24 @@ public class HospitalRepositoryImpl implements CustomHospitalRepository {
         if (searchString != null && !searchString.isEmpty()) {
             String nameRegex = ".*" + Pattern.quote(searchString) + ".*";
             String coordinatorRegex = ".*" + Pattern.quote(searchString) + ".*";
-            // query.addCriteria(new Criteria().orOperator(
-            //         Criteria.where("name").regex(nameRegex, "i"),
-            //         Criteria.where("coordinator").regex(coordinatorRegex, "i")
-            // ));
-            // query1.addCriteria(Criteria.where("name").regex(nameRegex, "i"));
-            // query2.addCriteria(Criteria.where("coordinator").regex(coordinatorRegex, "i"));
             criteria1=criteria1.and("name").regex(nameRegex, "i");
             criteria2=criteria2.and("coordinator").regex(coordinatorRegex, "i");
         }
-
         
-        query.addCriteria(new Criteria().orOperator(criteria1,criteria2));
+        // Only add criteria to the query if they have had conditions added to them.
+        // An empty criteria object can cause issues.
+        if (criteria1.getCriteriaObject().size() > 0 || criteria2.getCriteriaObject().size() > 0) {
+            query.addCriteria(new Criteria().orOperator(criteria1,criteria2));
+        }
+
 
         query.with(pageable);
-        List<HospitalResponse> hospitals = mongoTemplate.find(query, Hospital.class).stream()
-                .map(HospitalMapper::mapToHospitalResponse)
-                .collect(Collectors.toList());
+        // New line to get List<Hospital>:
+        List<Hospital> hospitals = mongoTemplate.find(query, Hospital.class);
+        
         long total = mongoTemplate.count(Query.of(query).limit(-1).skip(-1), Hospital.class);
-        return new PageImpl<HospitalResponse>(hospitals, pageable, total);
+        
+        // New return:
+        return new PageImpl<Hospital>(hospitals, pageable, total);
     }
 }

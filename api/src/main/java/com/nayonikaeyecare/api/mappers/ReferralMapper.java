@@ -8,12 +8,16 @@ import com.nayonikaeyecare.api.dto.referral.ReferralResponse;
 import com.nayonikaeyecare.api.entities.Referral;
 import com.nayonikaeyecare.api.entities.ServiceType;
 import com.nayonikaeyecare.api.entities.Status;
+// import com.nayonikaeyecare.api.entities.VisionAmbassador; // Removed
+import com.nayonikaeyecare.api.entities.user.User; // Added
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.time.LocalDateTime;
+import lombok.extern.slf4j.Slf4j; // Added
 
 @Component
+@Slf4j // Added
 public class ReferralMapper {
 
     public Referral toEntity(ReferralRequest request) {
@@ -42,7 +46,33 @@ public class ReferralMapper {
                 .build();
     }
 
-    public ReferralResponse toResponse(Referral referral) {
+    public ReferralResponse toResponse(Referral referral, User user) { // Signature changed to User
+        log.info("ReferralMapper.toResponse called for Referral ID: {}", referral.getId());
+        String ambassadorName = null;
+        String ambassadorPhoneNumber = null;
+        String ambassadorEmail = null;
+
+        if (user != null) {
+            log.info("Mapping with User: ID={}, FirstName={}, LastName={}, Phone={}, Email={}", 
+                     user.getId(), user.getFirstName(), user.getLastName(), user.getPhoneNumber(), user.getEmail());
+            
+            // Combine firstName and lastName for ambassadorName, handling potential nulls
+            String firstName = user.getFirstName();
+            String lastName = user.getLastName();
+            if (firstName != null && lastName != null) {
+                ambassadorName = firstName + " " + lastName;
+            } else if (firstName != null) {
+                ambassadorName = firstName;
+            } else if (lastName != null) {
+                ambassadorName = lastName;
+            }
+            
+            ambassadorPhoneNumber = user.getPhoneNumber();
+            ambassadorEmail = user.getEmail();
+        } else {
+            log.info("Mapping with NULL User object.");
+        }
+
         return new ReferralResponse(
                 referral.getId().toString(),
                 referral.getStatus(),
@@ -55,7 +85,7 @@ public class ReferralMapper {
                 referral.getState(),
                 referral.getGuardianContact(),
                 referral.getHospitalId().toString(),
-                referral.getAmbassadorId().toString(),
+                referral.getAmbassadorId() != null ? referral.getAmbassadorId().toString() : null, // Handle null ambassadorId
                 referral.getServices(),
                 referral.getTreatment(),
                 referral.getRightEye(),
@@ -65,7 +95,10 @@ public class ReferralMapper {
                 referral.getUpdatedAt(),
                 referral.getIsSpectacleRequested(),
                 referral.getSpectacleRequestedOn(),
-                referral.getHospitalCode()
+                referral.getHospitalCode(),
+                ambassadorName,
+                ambassadorPhoneNumber,
+                ambassadorEmail // New field
         );
     }
 

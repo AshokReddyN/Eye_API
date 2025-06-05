@@ -26,5 +26,6 @@ public interface ReferralRepository extends MongoRepository<Referral, ObjectId> 
     Page<Referral> filterReferrals(ObjectId ambassadorId, String state, String city, Boolean status, String name, Pageable pageable);
     
     List<Referral> findByPatientNameAndHospitalId(String patientName, ObjectId hospitalId);
-
+    long countByHospitalId(ObjectId hospitalId);
+    long countByHospitalIdAndIsSpectacleRequestedTrue(ObjectId hospitalId);
 }

@@ -14,6 +14,7 @@ import com.nayonikaeyecare.api.entities.Hospital;
 import com.nayonikaeyecare.api.exceptions.ResourceMissingException;
 import com.nayonikaeyecare.api.mappers.HospitalMapper;
 import com.nayonikaeyecare.api.repositories.hospital.HospitalRepository;
+import com.nayonikaeyecare.api.repositories.referral.ReferralRepository; // Added
 
 import java.util.List;
 
@@ -23,6 +24,7 @@ import java.util.List;
 public class HospitalService {
 
     private final HospitalRepository hospitalRepository;
+    private final ReferralRepository referralRepository; // Added
 
     public HospitalResponse createHospital(HospitalRequest hospitalRequest) {
         validateHospitalRequest(hospitalRequest);
@@ -110,9 +112,36 @@ public class HospitalService {
         }
     }
 
-    public Page<HospitalResponse> filterHospitals(String state, List cities, Boolean status, String searchString,List<String> serviceTypes,
-            Pageable pageable) {
-        return hospitalRepository.filterHospitals(state, cities, status, searchString,serviceTypes,pageable);
+    public Page<HospitalResponse> filterHospitals(String state, List<String> cities, Boolean status, String searchString, List<String> serviceTypes, Pageable pageable) {
+        Page<Hospital> hospitalPage = hospitalRepository.filterHospitals(state, cities, status, searchString, serviceTypes, pageable);
+        
+        return hospitalPage.map(hospital -> {
+            long refCount = 0; // Default to 0
+            long spectacleRefCount = 0; // Initialize new count
+
+            if (hospital.getId() != null) { // Check if hospital ID is available
+                refCount = referralRepository.countByHospitalId(hospital.getId());
+                spectacleRefCount = referralRepository.countByHospitalIdAndIsSpectacleRequestedTrue(hospital.getId()); // Get new count
+            }
+            
+            HospitalResponse basicResponse = HospitalMapper.mapToHospitalResponse(hospital); 
+            
+            return new HospitalResponse(
+                basicResponse.id(),
+                basicResponse.hospitalCode(),
+                basicResponse.name(),
+                basicResponse.address(),
+                basicResponse.services(),
+                basicResponse.status(),
+                basicResponse.coordinator(),
+                basicResponse.coordinator_phonenumber(),
+                basicResponse.coordinator_email(),
+                basicResponse.googleLink(),
+                basicResponse.registration_date(),
+                refCount,
+                spectacleRefCount // Add the new count here
+            );
+        });
     }
 
     public void saveAllHospitals(List<HospitalRequest> hospitalRequests) {

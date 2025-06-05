@@ -37,5 +37,8 @@ public record ReferralResponse(
         Date updatedAt,
         Boolean isSpectacleRequested,
         String spectacleRequestedOn,
-        String hospitalCode
+        String hospitalCode,
+        String ambassadorName,
+        String ambassadorPhoneNumber,
+        String ambassadorEmail        // New field
 ) {}

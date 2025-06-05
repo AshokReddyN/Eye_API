@@ -27,7 +27,7 @@ public class VisionAmbassadorRepositoryImpl implements CustomVisionAmbassador {
     @Override
 public Page<VisionAmbassadorResponse> filterVisionAmbassador(String searchString, Pageable pageable) {
     Query query = new Query();
-
+    query.addCriteria(Criteria.where("firstName").ne(null));
     if (searchString != null && !searchString.isEmpty()) {
         String nameRegex = ".*" + Pattern.quote(searchString) + ".*";
         String cityRegex = ".*" + Pattern.quote(searchString) + ".*";

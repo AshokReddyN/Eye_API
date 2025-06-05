@@ -134,4 +134,9 @@ public class AuthenticationController {
                     .body(errorResponse);
         }
     }
+
+    @GetMapping("/health")
+    public ResponseEntity<String> healthCheck() {
+        return ResponseEntity.ok("OK");
+    }
 }

@@ -28,5 +28,7 @@ public record HospitalResponse(
                 String coordinator_phonenumber,
                 String coordinator_email,
                 String googleLink,
-                String registration_date) {
+                String registration_date,
+                long referralCount,
+                long spectacleReferralCount) {
 }
