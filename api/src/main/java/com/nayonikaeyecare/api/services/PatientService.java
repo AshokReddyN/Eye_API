@@ -34,7 +34,7 @@ public class PatientService {
                 .ageRange(request.getAgeRange())
                 .phone(request.getPhone())
                 .hospitalName("")
-                .status("")
+                .status(Status.INPROGRESS.name())   
                 .email(request.getEmail())
                 .city(request.getCity())
                 .state(request.getState())

@@ -27,7 +27,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
-
+@lombok.Builder 
 /**
  * Application entity representing an application in the system.
  * This class is annotated with @Document to indicate that it is a MongoDB
@@ -36,7 +36,7 @@ import lombok.NoArgsConstructor;
  * description.
  */
 
-public class Application {
+public class Application { 
 
     @Id
     private String id;

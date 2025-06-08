@@ -68,22 +68,29 @@ public class ReferralService {
         // Initialize referralIds list if null
         if (patient.getReferralIds() == null) {
             patient.setReferralIds(new ArrayList<>());
-        }
-        else {
-            // Check for duplicates
-            if (patient.getStatus().equals(referralRequest.status().toString())) {
-                throw new IllegalArgumentException("Referral already in progress. PLease create after completion");
+        } else if (!patient.getReferralIds().isEmpty()) {
+            // Fetch existing referrals
+            List<ObjectId> referralObjectIds = patient.getReferralIds().stream()
+                                                    .map(ObjectId::new)
+                                                    .collect(Collectors.toList());
+            List<Referral> existingReferrals = referralRepository.findAllByIdIn(referralObjectIds); // Assuming findAllByIdIn is added to ReferralRepository
+            for (Referral existingReferral : existingReferrals) {
+                if (existingReferral.getStatus() == Status.REFERRED || existingReferral.getStatus() == Status.INPROGRESS) {
+                    throw new IllegalArgumentException("Patient already has an active referral (REFERRED or INPROGRESS).");
+                }
             }
         }
         Referral referral = referralMapper.toEntity(referralRequest);
         referral.setCreatedAt(new Date());
         referral.setUpdatedAt(new Date());
+        referral.setStatus(Status.REFERRED); // Set initial status to INPROGRESS
         Referral savedReferral = referralRepository.save(referral);
         
         // Add new referral ID to the list
         patient.getReferralIds().add(savedReferral.getId().toString());
-        patient.setHospitalName(referralRequest.hospitalName());
-        patient.setStatus(Status.REFERRED.toString()); // Default patient status to REFERRED
+        patient.setStatus(Status.REFERRED.name()); // Set patient status to REFERRED
+        log.info("Patient ID: {}, Referral ID added to patient: {}", patient.getId(), savedReferral.getId());
+        patient.setHospitalName(savedReferral.getHospitalName());
         // Save updated patient
         patientRepository.save(patient);
         User user = null;

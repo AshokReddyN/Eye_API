@@ -17,3 +17,6 @@ jwt:
 auth:
   excluded:
     path: /auth,/v3/api-docs,/swagger-ui,/swagger-resources
+
+fast2sms:
+  apikey: ${FAST2SMS_API_KEY}

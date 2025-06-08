@@ -28,4 +28,5 @@ public interface ReferralRepository extends MongoRepository<Referral, ObjectId> 
     List<Referral> findByPatientNameAndHospitalId(String patientName, ObjectId hospitalId);
     long countByHospitalId(ObjectId hospitalId);
     long countByHospitalIdAndIsSpectacleRequestedTrue(ObjectId hospitalId);
+    List<Referral> findAllByIdIn(List<ObjectId> ids);
 }

@@ -40,6 +40,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+import com.nayonikaeyecare.api.dto.referral.ReferralRequest;
+import com.nayonikaeyecare.api.entities.Patient;
+import com.nayonikaeyecare.api.entities.Status;
+import java.util.ArrayList;
+
+
 @ExtendWith(MockitoExtension.class)
 public class ReferralServiceTest {
 
@@ -69,10 +75,13 @@ public class ReferralServiceTest {
 
     @Captor
     private ArgumentCaptor<Query> queryCaptor;
-    // @Captor
-    // private ArgumentCaptor<VisionAmbassador> ambassadorCaptor; // No longer directly capturing VA if User is main focus
     @Captor
     private ArgumentCaptor<User> userCaptor; // For mapper
+    @Captor
+    private ArgumentCaptor<Patient> patientCaptor;
+    @Captor
+    private ArgumentCaptor<Referral> referralCaptor;
+
 
     private Referral referral1, referral2, referralWithNullAmbassadorId, referralToVAWithInvalidUserId, referralToVAWithNoUserLink, referralToVANotFound;
     private VisionAmbassador ambassador1WithUser, ambassador2WithUser, ambassadorWithInvalidUserId, ambassadorWithNoUserLink;
@@ -109,6 +118,200 @@ public class ReferralServiceTest {
         referralToVAWithNoUserLink = Referral.builder().id(new ObjectId()).patientName("Patient E").ambassadorId(vaIdWithNoUserLink).createdAt(new Date()).build();
         referralToVANotFound = Referral.builder().id(new ObjectId()).patientName("Patient F").ambassadorId(vaIdNotFound).createdAt(new Date()).build();
     }
+
+    private Patient createTestPatient(String id, List<String> referralIds) {
+        Patient patient = Patient.builder()
+                .id(new ObjectId(id))
+                .name("Test Patient")
+                .referralIds(referralIds)
+                // Set other necessary fields if any for patient
+                .build();
+        // patient.setStatus("SOME_INITIAL_STATUS"); // If needed for tests not related to createReferral's new logic
+        return patient;
+    }
+
+    private ReferralRequest createTestReferralRequest(String patientId) {
+        return ReferralRequest.builder()
+                .patientId(patientId)
+                .hospitalName("Test Hospital") // This should not be used to set patient.hospitalName
+                .status(Status.REFERRED) // This should not be used to set patient.status
+                // Set other necessary fields for ReferralRequest
+                .build();
+    }
+
+    @Test
+    void createReferral_whenPatientHasExistingReferredReferral_shouldThrowException() {
+        // Arrange
+        String patientId = new ObjectId().toHexString();
+        String existingReferralId = new ObjectId().toHexString();
+        Patient patient = createTestPatient(patientId, new ArrayList<>(Arrays.asList(existingReferralId)));
+        ReferralRequest request = createTestReferralRequest(patientId);
+        Referral existingReferral = Referral.builder().id(new ObjectId(existingReferralId)).status(Status.REFERRED).build();
+
+        when(patientRepository.findById(any(ObjectId.class))).thenReturn(Optional.of(patient));
+        when(referralRepository.findAllByIdIn(anyList())).thenReturn(Arrays.asList(existingReferral));
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            referralService.createReferral(request);
+        });
+        assertEquals("Patient already has an active referral (REFERRED or INPROGRESS).", exception.getMessage());
+        verify(referralRepository, never()).save(any(Referral.class));
+        verify(patientRepository, never()).save(any(Patient.class)); // Patient should not be saved if referral creation fails early
+    }
+
+    @Test
+    void createReferral_whenPatientHasExistingInProgressReferral_shouldThrowException() {
+        // Arrange
+        String patientId = new ObjectId().toHexString();
+        String existingReferralId = new ObjectId().toHexString();
+        Patient patient = createTestPatient(patientId, new ArrayList<>(Arrays.asList(existingReferralId)));
+        ReferralRequest request = createTestReferralRequest(patientId);
+        Referral existingReferral = Referral.builder().id(new ObjectId(existingReferralId)).status(Status.INPROGRESS).build();
+
+        when(patientRepository.findById(any(ObjectId.class))).thenReturn(Optional.of(patient));
+        when(referralRepository.findAllByIdIn(anyList())).thenReturn(Arrays.asList(existingReferral));
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            referralService.createReferral(request);
+        });
+        assertEquals("Patient already has an active referral (REFERRED or INPROGRESS).", exception.getMessage());
+        verify(referralRepository, never()).save(any(Referral.class));
+        verify(patientRepository, never()).save(any(Patient.class));
+    }
+
+    @Test
+    void createReferral_whenPatientHasExistingCompletedReferral_shouldCreateNewReferral() {
+        // Arrange
+        String patientIdStr = new ObjectId().toHexString();
+        ObjectId patientObjectId = new ObjectId(patientIdStr);
+        String existingReferralIdStr = new ObjectId().toHexString();
+        Patient patient = createTestPatient(patientIdStr, new ArrayList<>(Arrays.asList(existingReferralIdStr)));
+        // Store original patient fields to check they are not modified
+        String originalPatientHospitalName = patient.getHospitalName();
+        String originalPatientStatus = patient.getStatus();
+
+        ReferralRequest request = createTestReferralRequest(patientIdStr);
+        Referral existingReferral = Referral.builder().id(new ObjectId(existingReferralIdStr)).status(Status.COMPLETED).build();
+        Referral newReferral = Referral.builder().id(new ObjectId()).status(request.status()).build(); // Mapper output
+        ReferralResponse expectedResponse = ReferralResponse.builder().id(newReferral.getId().toHexString()).build(); // Mapper output
+
+        when(patientRepository.findById(patientObjectId)).thenReturn(Optional.of(patient));
+        when(referralRepository.findAllByIdIn(anyList())).thenReturn(Arrays.asList(existingReferral));
+        when(referralMapper.toEntity(request)).thenReturn(newReferral);
+        when(referralRepository.save(any(Referral.class))).thenReturn(newReferral);
+        when(referralMapper.toResponse(eq(newReferral), any())).thenReturn(expectedResponse);
+
+
+        // Act
+        ReferralResponse response = referralService.createReferral(request);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(newReferral.getId().toHexString(), response.id());
+
+        verify(referralRepository).save(referralCaptor.capture());
+        Referral savedReferral = referralCaptor.getValue();
+        assertNotNull(savedReferral.getCreatedAt());
+        assertNotNull(savedReferral.getUpdatedAt());
+
+        verify(patientRepository).save(patientCaptor.capture());
+        Patient savedPatient = patientCaptor.getValue();
+        assertTrue(savedPatient.getReferralIds().contains(newReferral.getId().toHexString()));
+        assertEquals(2, savedPatient.getReferralIds().size()); // Existing + new
+
+        // Verify patient's hospitalName and status are NOT changed to those from ReferralRequest
+        assertEquals(originalPatientHospitalName, savedPatient.getHospitalName());
+        assertEquals(originalPatientStatus, savedPatient.getStatus());
+    }
+    
+    @Test
+    void createReferral_whenPatientHasNoExistingReferrals_shouldCreateNewReferral() {
+        // Arrange
+        String patientIdStr = new ObjectId().toHexString();
+        ObjectId patientObjectId = new ObjectId(patientIdStr);
+        Patient patient = createTestPatient(patientIdStr, new ArrayList<>()); // Empty list
+        String originalPatientHospitalName = patient.getHospitalName();
+        String originalPatientStatus = patient.getStatus();
+
+        ReferralRequest request = createTestReferralRequest(patientIdStr);
+        Referral newReferral = Referral.builder().id(new ObjectId()).status(request.status()).build();
+        ReferralResponse expectedResponse = ReferralResponse.builder().id(newReferral.getId().toHexString()).build();
+
+        when(patientRepository.findById(patientObjectId)).thenReturn(Optional.of(patient));
+        // No call to referralRepository.findAllByIdIn when referralIds is empty
+        when(referralMapper.toEntity(request)).thenReturn(newReferral);
+        when(referralRepository.save(any(Referral.class))).thenReturn(newReferral);
+        when(referralMapper.toResponse(eq(newReferral), any())).thenReturn(expectedResponse);
+
+        // Act
+        ReferralResponse response = referralService.createReferral(request);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(newReferral.getId().toHexString(), response.id());
+
+        verify(referralRepository).save(referralCaptor.capture());
+        Referral savedReferral = referralCaptor.getValue();
+        assertNotNull(savedReferral.getCreatedAt());
+        assertNotNull(savedReferral.getUpdatedAt());
+
+        verify(patientRepository).save(patientCaptor.capture());
+        Patient savedPatient = patientCaptor.getValue();
+        assertTrue(savedPatient.getReferralIds().contains(newReferral.getId().toHexString()));
+        assertEquals(1, savedPatient.getReferralIds().size());
+
+        assertEquals(originalPatientHospitalName, savedPatient.getHospitalName());
+        assertEquals(originalPatientStatus, savedPatient.getStatus());
+        
+        verify(referralRepository, never()).findAllByIdIn(anyList());
+    }
+
+    @Test
+    void createReferral_whenPatientReferralIdsListIsNull_shouldInitializeAndCreateNewReferral() {
+        // Arrange
+        String patientIdStr = new ObjectId().toHexString();
+        ObjectId patientObjectId = new ObjectId(patientIdStr);
+        Patient patient = createTestPatient(patientIdStr, null); // referralIds is null
+        assertNull(patient.getReferralIds());
+        String originalPatientHospitalName = patient.getHospitalName();
+        String originalPatientStatus = patient.getStatus();
+
+
+        ReferralRequest request = createTestReferralRequest(patientIdStr);
+        Referral newReferral = Referral.builder().id(new ObjectId()).status(request.status()).build();
+        ReferralResponse expectedResponse = ReferralResponse.builder().id(newReferral.getId().toHexString()).build();
+
+        when(patientRepository.findById(patientObjectId)).thenReturn(Optional.of(patient));
+        when(referralMapper.toEntity(request)).thenReturn(newReferral);
+        when(referralRepository.save(any(Referral.class))).thenReturn(newReferral);
+        when(referralMapper.toResponse(eq(newReferral), any())).thenReturn(expectedResponse);
+
+        // Act
+        ReferralResponse response = referralService.createReferral(request);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(newReferral.getId().toHexString(), response.id());
+
+        verify(referralRepository).save(referralCaptor.capture());
+        Referral savedReferral = referralCaptor.getValue();
+        assertNotNull(savedReferral.getCreatedAt());
+        assertNotNull(savedReferral.getUpdatedAt());
+
+        verify(patientRepository).save(patientCaptor.capture());
+        Patient savedPatient = patientCaptor.getValue();
+        assertNotNull(savedPatient.getReferralIds()); // Should be initialized
+        assertTrue(savedPatient.getReferralIds().contains(newReferral.getId().toHexString()));
+        assertEquals(1, savedPatient.getReferralIds().size());
+        
+        assertEquals(originalPatientHospitalName, savedPatient.getHospitalName());
+        assertEquals(originalPatientStatus, savedPatient.getStatus());
+
+        verify(referralRepository, never()).findAllByIdIn(anyList());
+    }
+
 
     @Test
     void testFilterReferrals_EnrichesAmbassadorDetailsAndSortsByDefault() {

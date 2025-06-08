@@ -26,6 +26,7 @@ import com.nayonikaeyecare.api.repositories.user.UserRepository;
 import com.nayonikaeyecare.api.repositories.user.UserSessionRepository;
 import com.nayonikaeyecare.api.security.JWTTokenProvider;
 import java.util.Date;
+// import com.nayonikaeyecare.api.entities.User; // Already imported via com.nayonikaeyecare.api.entities.user.User
 
 import jakarta.annotation.Nonnull;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,7 @@ public class UserService {
     private final ApplicationRepository applicationRepository;
     private final UserSessionRepository userSessionRepository;
     private final JWTTokenProvider jwtTokenProvider;
+    private final SmsService smsService;
 
     /**
      * creates a new user in the system
@@ -134,6 +136,14 @@ public class UserService {
             UserSession savedUserSession = userSessionRepository
                     .save(newUserSession);
 
+            // Retrieve the full User object to get the phone number
+            User fullUser = userRepository.findById(user.getId())
+                .orElseThrow(() -> new UserNotFoundException("User not found after session creation with id: " + user.getId()));
+
+            if (fullUser.getPhoneNumber() != null && !fullUser.getPhoneNumber().isEmpty()) {
+                smsService.sendOtp(fullUser.getPhoneNumber(), otp);
+            }
+
             return new AuthenticationResponse(savedUserSession.getId().toString(),
                     userCreated, user.getId().toString());
         } else {
@@ -176,6 +186,14 @@ public class UserService {
                 .build();
         userSessionRepository.save(newUserSession);
 
+        // Retrieve the full User object to get the phone number
+        User fullUser = userRepository.findById(newUserSession.getUserId())
+            .orElseThrow(() -> new UserNotFoundException("User not found for OTP resend with id: " + newUserSession.getUserId()));
+        
+        if (fullUser.getPhoneNumber() != null && !fullUser.getPhoneNumber().isEmpty()) {
+            smsService.sendOtp(fullUser.getPhoneNumber(), otp);
+        }
+
         return newUserSession;
     }
 
@@ -215,6 +233,7 @@ public class UserService {
                 // Create a new user with the provided details
                 User user = User.builder()
                         .userCredentialId(userCredential.getId())
+                        .phoneNumber(userCredential.getCredential())
                         .createdAt(new java.util.Date())
                         .build();
                 userRepository.save(user);
