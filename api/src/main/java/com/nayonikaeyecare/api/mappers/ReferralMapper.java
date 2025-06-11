@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.time.LocalDateTime;
 import lombok.extern.slf4j.Slf4j; // Added
+import com.nayonikaeyecare.api.entities.Hospital; // Added
+import com.nayonikaeyecare.api.entities.Patient; // Added
 
 @Component
 @Slf4j // Added
@@ -46,7 +48,7 @@ public class ReferralMapper {
                 .build();
     }
 
-    public ReferralResponse toResponse(Referral referral, User user) { // Signature changed to User
+    public ReferralResponse toResponse(Referral referral, User user, Hospital hospital, Patient patient) { // Signature changed to User
         log.info("ReferralMapper.toResponse called for Referral ID: {}", referral.getId());
         String ambassadorName = null;
         String ambassadorPhoneNumber = null;
@@ -98,7 +100,9 @@ public class ReferralMapper {
                 referral.getHospitalCode(),
                 ambassadorName,
                 ambassadorPhoneNumber,
-                ambassadorEmail // New field
+                ambassadorEmail,
+                hospital,
+                patient // New field
         );
     }
 

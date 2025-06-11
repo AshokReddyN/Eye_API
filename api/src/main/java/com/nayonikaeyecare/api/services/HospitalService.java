@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort; 
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -113,7 +115,14 @@ public class HospitalService {
     }
 
     public Page<HospitalResponse> filterHospitals(String state, List<String> cities, Boolean status, String searchString, List<String> serviceTypes, Pageable pageable) {
-        Page<Hospital> hospitalPage = hospitalRepository.filterHospitals(state, cities, status, searchString, serviceTypes, pageable);
+        
+        Pageable sortedPageable = PageRequest.of(
+            pageable.getPageNumber(),
+            pageable.getPageSize(),
+            Sort.by(Sort.Direction.DESC, "updatedAt")
+        );
+
+        Page<Hospital> hospitalPage = hospitalRepository.filterHospitals(state, cities, status, searchString, serviceTypes, sortedPageable);
         
         return hospitalPage.map(hospital -> {
             long refCount = 0; // Default to 0

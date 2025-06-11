@@ -1,18 +1,18 @@
 spring:
+  application:
+    name: api
   data:
     mongodb:
-      uri: mongodb+srv://nayonikamanager:tsJq4RcfhTFIGHQB@nayonikadev.1quayyj.mongodb.net/nayonikaDev
+      uri: mongodb+srv://nayonikaeyecare:b7yjInwQUxCCghBT@nayonikacluster.fqrcfog.mongodb.net/nayonikaDev
       database: nayonikaDev
 server:
-  port: 8080
+  port: 8081
 
 jwt:
   secret: "thisisasecretkeythatis32byteslongButNotReallyAndItShouldBeKeptSecret"
   expiration: 3600
-
 auth:
   excluded:
     path: /auth,/v3/api-docs,/swagger-ui,/swagger-resources
-
 fast2sms:
-  apikey: "HD8zbPVSnrpIvCdNQLoU6O5a7WqgBmiKMFsX3c4TE09lk2uAJG4w9SgDKNfE12eZhxlosdjVOmuXqnYM"
+  apikey: "ss"

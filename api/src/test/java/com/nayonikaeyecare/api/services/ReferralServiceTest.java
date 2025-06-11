@@ -201,7 +201,7 @@ public class ReferralServiceTest {
         when(referralRepository.findAllByIdIn(anyList())).thenReturn(Arrays.asList(existingReferral));
         when(referralMapper.toEntity(request)).thenReturn(newReferral);
         when(referralRepository.save(any(Referral.class))).thenReturn(newReferral);
-        when(referralMapper.toResponse(eq(newReferral), any())).thenReturn(expectedResponse);
+        when(referralMapper.toResponse(eq(newReferral), any(),eq(null),eq(null))).thenReturn(expectedResponse);
 
 
         // Act
@@ -243,7 +243,7 @@ public class ReferralServiceTest {
         // No call to referralRepository.findAllByIdIn when referralIds is empty
         when(referralMapper.toEntity(request)).thenReturn(newReferral);
         when(referralRepository.save(any(Referral.class))).thenReturn(newReferral);
-        when(referralMapper.toResponse(eq(newReferral), any())).thenReturn(expectedResponse);
+        when(referralMapper.toResponse(eq(newReferral), any(),eq(null),eq(null))).thenReturn(expectedResponse);
 
         // Act
         ReferralResponse response = referralService.createReferral(request);
@@ -286,7 +286,7 @@ public class ReferralServiceTest {
         when(patientRepository.findById(patientObjectId)).thenReturn(Optional.of(patient));
         when(referralMapper.toEntity(request)).thenReturn(newReferral);
         when(referralRepository.save(any(Referral.class))).thenReturn(newReferral);
-        when(referralMapper.toResponse(eq(newReferral), any())).thenReturn(expectedResponse);
+        when(referralMapper.toResponse(eq(newReferral), any(),eq(null),eq(null))).thenReturn(expectedResponse);
 
         // Act
         ReferralResponse response = referralService.createReferral(request);
@@ -340,21 +340,21 @@ public class ReferralServiceTest {
 
 
         // Mock the mapper behavior for each referral, now with User
-        when(referralMapper.toResponse(eq(referral1), eq(user1)))
+        when(referralMapper.toResponse(eq(referral1), eq(user1), eq(null),eq(null)))
             .thenReturn(ReferralResponse.builder().id(referral1.getId().toHexString()).patientName("Patient A")
                             .ambassadorName("User One").ambassadorPhoneNumber("111222").ambassadorEmail("user1@example.com").build());
-        when(referralMapper.toResponse(eq(referral2), eq(user2)))
+        when(referralMapper.toResponse(eq(referral2), eq(user2), eq(null),eq(null)))
             .thenReturn(ReferralResponse.builder().id(referral2.getId().toHexString()).patientName("Patient B")
                             .ambassadorName("User Two").ambassadorPhoneNumber("333444").ambassadorEmail("user2@example.com").build());
         
         // For referrals where user mapping will be null
-        when(referralMapper.toResponse(eq(referralWithNullAmbassadorId), eq(null)))
+        when(referralMapper.toResponse(eq(referralWithNullAmbassadorId), eq(null), eq(null),eq(null)))
             .thenReturn(ReferralResponse.builder().id(referralWithNullAmbassadorId.getId().toHexString()).patientName("Patient C").build());
-        when(referralMapper.toResponse(eq(referralToVAWithInvalidUserId), eq(null))) // VA's userId is invalid
+        when(referralMapper.toResponse(eq(referralToVAWithInvalidUserId), eq(null), eq(null),eq(null))) // VA's userId is invalid
             .thenReturn(ReferralResponse.builder().id(referralToVAWithInvalidUserId.getId().toHexString()).patientName("Patient D").build());
-        when(referralMapper.toResponse(eq(referralToVAWithNoUserLink), eq(null))) // VA's userId links to non-existent User
+        when(referralMapper.toResponse(eq(referralToVAWithNoUserLink), eq(null), eq(null),eq(null))) // VA's userId links to non-existent User
             .thenReturn(ReferralResponse.builder().id(referralToVAWithNoUserLink.getId().toHexString()).patientName("Patient E").build());
-        when(referralMapper.toResponse(eq(referralToVANotFound), eq(null))) // VA itself not found
+        when(referralMapper.toResponse(eq(referralToVANotFound), eq(null), eq(null),eq(null))) // VA itself not found
             .thenReturn(ReferralResponse.builder().id(referralToVANotFound.getId().toHexString()).patientName("Patient F").build());
 
         // Act

@@ -65,21 +65,6 @@ public class ReferralService {
         Patient patient = patientRepository.findById(new ObjectId(referralRequest.patientId()))
             .orElseThrow(() -> new IllegalArgumentException("Patient not found"));
         
-        // Initialize referralIds list if null
-        if (patient.getReferralIds() == null) {
-            patient.setReferralIds(new ArrayList<>());
-        } else if (!patient.getReferralIds().isEmpty()) {
-            // Fetch existing referrals
-            List<ObjectId> referralObjectIds = patient.getReferralIds().stream()
-                                                    .map(ObjectId::new)
-                                                    .collect(Collectors.toList());
-            List<Referral> existingReferrals = referralRepository.findAllByIdIn(referralObjectIds); // Assuming findAllByIdIn is added to ReferralRepository
-            for (Referral existingReferral : existingReferrals) {
-                if (existingReferral.getStatus() == Status.REFERRED || existingReferral.getStatus() == Status.INPROGRESS) {
-                    throw new IllegalArgumentException("Patient already has an active referral (REFERRED or INPROGRESS).");
-                }
-            }
-        }
         Referral referral = referralMapper.toEntity(referralRequest);
         referral.setCreatedAt(new Date());
         referral.setUpdatedAt(new Date());
@@ -121,7 +106,7 @@ public class ReferralService {
         } else {
             log.info("Referral ID: {}, has null VisionAmbassadorId.", savedReferral.getId());
         }
-        return referralMapper.toResponse(savedReferral, user);
+        return referralMapper.toResponse(savedReferral, user,null,null);
     }
 
     public List<ReferralResponse> getAllReferrals() {
@@ -156,7 +141,7 @@ public class ReferralService {
                     } else {
                         log.info("Referral ID: {}, has null VisionAmbassadorId.", referral.getId());
                     }
-                    return referralMapper.toResponse(referral, user);
+                    return referralMapper.toResponse(referral, user,null,null);
                 })
                 .collect(Collectors.toList());
     }
@@ -192,7 +177,7 @@ public class ReferralService {
         } else {
             log.info("Referral ID: {}, has null VisionAmbassadorId.", referral.getId());
         }
-        return referralMapper.toResponse(referral, user);
+        return referralMapper.toResponse(referral, user,null,null);
     }
 
     public List<ReferralResponse> getReferralsByAmbassadorId(String ambassadorIdString) { // Parameter is VisionAmbassador ID string
@@ -234,7 +219,7 @@ public class ReferralService {
                          log.info("Referral ID: {} (within getReferralsByAmbassadorId) has null VisionAmbassadorId, though query was by VA ID.", referral.getId());
                     }
                     // Pass the finalUser obtained from the ambassadorIdString parameter
-                    return referralMapper.toResponse(referral, finalUser);
+                    return referralMapper.toResponse(referral, finalUser,null,null);
                 })
                 .collect(Collectors.toList());
     }
@@ -271,7 +256,7 @@ public class ReferralService {
                     } else {
                         log.info("Referral ID: {}, has null VisionAmbassadorId.", referral.getId());
                     }
-                    return referralMapper.toResponse(referral, user);
+                    return referralMapper.toResponse(referral, user,null,null);
                 })
                 .collect(Collectors.toList());
     }
@@ -307,7 +292,7 @@ public class ReferralService {
                     } else {
                         log.info("Referral ID: {}, has null VisionAmbassadorId.", referral.getId());
                     }
-                    return referralMapper.toResponse(referral, user);
+                    return referralMapper.toResponse(referral, user,null,null);
                 });
     }
 
@@ -316,6 +301,7 @@ public class ReferralService {
                 .stream()
                 .map(referral -> {
                     User user = null;
+                    Hospital hospital = null;
                     if (referral.getAmbassadorId() != null) {
                         log.info("Referral ID: {}, Original VisionAmbassador ID (ObjectId): {}", referral.getId(), referral.getAmbassadorId());
                         VisionAmbassador visionAmbassador = visionAmbassadorRepository.findById(referral.getAmbassadorId()).orElse(null);
@@ -343,7 +329,20 @@ public class ReferralService {
                     } else {
                         log.info("Referral ID: {}, has null VisionAmbassadorId.", referral.getId());
                     }
-                    return referralMapper.toResponse(referral, user);
+
+                    if (referral.getHospitalId() != null) {
+                        log.info("Referral ID: {}, Original Hospital ID (ObjectId): {}", referral.getId(), referral.getHospitalId());
+                        hospital = hospitalRepository.findById(referral.getHospitalId()).orElse(null);
+                        if (hospital != null) {
+                            log.info("Found hospital:", hospital.getId());
+                           
+                        } else {
+                            log.warn("Hospital NOT FOUND for ID: {}", referral.getHospitalId());
+                        }
+                    } else {
+                        log.info("Referral ID: {}, has null HospitalId.", referral.getId());
+                    }
+                    return referralMapper.toResponse(referral, user,hospital,null);
                 })
                 .collect(Collectors.toList());
     }
@@ -393,6 +392,7 @@ public class ReferralService {
     List<ReferralResponse> referralResponses = referrals.stream()
         .map(referral -> {
             User user = null;
+            Patient patient = null; // Initialize patient to null
             if (referral.getAmbassadorId() != null) {
                 log.info("Referral ID: {}, Original VisionAmbassador ID (ObjectId): {}", referral.getId(), referral.getAmbassadorId());
                 VisionAmbassador visionAmbassador = visionAmbassadorRepository.findById(referral.getAmbassadorId()).orElse(null);
@@ -420,7 +420,19 @@ public class ReferralService {
             } else {
                 log.info("Referral ID: {}, has null VisionAmbassadorId.", referral.getId());
             }
-            return referralMapper.toResponse(referral, user);
+
+            if (referral.getPatientId() != null) {
+                log.info("Referral ID: {}, Original Patient ID (ObjectId): {}", referral.getId(), referral.getPatientId());
+                patient = patientRepository.findById(referral.getPatientId()).orElse(null);
+                if (patient != null) {
+                    log.info("Found Patient: ID_DB={}, patientId_string={}", patient.getId(), patient.getId());
+                } else {
+                    log.warn("Patient NOT FOUND for ID: {}", referral.getAmbassadorId());
+                }
+            } else {
+                log.info("Referral ID: {}, has null PatientId.", referral.getId());
+            }
+            return referralMapper.toResponse(referral, user,null,patient);
         })
         .collect(Collectors.toList());
     
@@ -465,7 +477,7 @@ public class ReferralService {
         } else {
             log.info("Referral ID: {}, has null VisionAmbassadorId.", savedReferral.getId());
         }
-        return referralMapper.toResponse(savedReferral, user);
+        return referralMapper.toResponse(savedReferral, user,null,null);
     }
 
      private EyeDetails mapEyeDetailsDtoToEntity(EyeDetailsDto dto) {
@@ -497,7 +509,7 @@ public class ReferralService {
                 Patient patient = patientRepository.findById(referral.getPatientId()).orElse(null);
                 if (patient != null &&
                     // patient.getGuardian() != null && // This check is removed
-                    Objects.equals(referral.getGuardianContact(), request.getGuardianContact()) &&
+                    Objects.equals(patient.getPhone(), request.getGuardianContact()) &&
                     patient.getGender().name().equalsIgnoreCase(request.getGender())) { // Assuming Patient.getGender() returns an enum
 
                     referral.setRightEye(mapEyeDetailsDtoToEntity(request.getRightEye()));
@@ -506,6 +518,7 @@ public class ReferralService {
                     referral.setIsSpectacleRequested(true);
 
                     try {
+                        patient.setStatus(request.getStatus().toUpperCase());
                         referral.setStatus(Status.valueOf(request.getStatus().toUpperCase()));
                     } catch (IllegalArgumentException e) {
                         // Handle invalid status string if necessary, maybe log an error or add to rejected
@@ -522,6 +535,8 @@ public class ReferralService {
                         // To reject, we'd need to move this record to rejectedList and break/continue.
                         // Let's refine this: if status is crucial and invalid, reject.
                     }
+                    hospital.setUpdatedAt(new Date());
+                    hospitalRepository.save(hospital);
                     referral.setUpdatedAt(new Date());
                     referralRepository.save(referral);
                     updatedCount++;

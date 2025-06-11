@@ -25,45 +25,45 @@ public class VisionAmbassadorRepositoryImpl implements CustomVisionAmbassador {
     private MongoTemplate mongoTemplate;
 
     @Override
-public Page<VisionAmbassadorResponse> filterVisionAmbassador(String searchString, Pageable pageable) {
-    Query query = new Query();
-    query.addCriteria(new Criteria().andOperator(
-        Criteria.where("firstName").ne(null),
-        Criteria.where("firstName").ne("")
-    ));
-    if (searchString != null && !searchString.isEmpty()) {
-        String nameRegex = ".*" + Pattern.quote(searchString) + ".*";
-        String cityRegex = ".*" + Pattern.quote(searchString) + ".*";
-        String stateRegex = ".*" + Pattern.quote(searchString) + ".*";
-        query.addCriteria(new Criteria().orOperator(
-            Criteria.where("firstName").regex(nameRegex, "i"),
-            Criteria.where("lastName").regex(nameRegex, "i"),
-            Criteria.where("city").regex(cityRegex, "i"),
-            Criteria.where("state").regex(stateRegex, "i")
-        ));
+    public Page<VisionAmbassadorResponse> filterVisionAmbassador(String searchString, Pageable pageable) {
+        Query query = new Query();
+    
+       // Build criteria list
+       List<Criteria> criteriaList = new java.util.ArrayList<>();
+       criteriaList.add(Criteria.where("firstName").ne(null));
+       criteriaList.add(Criteria.where("firstName").ne(""));
+       criteriaList.add(Criteria.where("firstName").ne("null "));
+    
+       if (searchString != null && !searchString.isEmpty()) {
+           String regex = ".*" + Pattern.quote(searchString) + ".*";
+           Criteria searchCriteria = new Criteria().orOperator(
+               Criteria.where("firstName").regex(regex, "i"),
+               Criteria.where("lastName").regex(regex, "i"),
+               Criteria.where("city").regex(regex, "i"),
+               Criteria.where("state").regex(regex, "i")
+           );
+           criteriaList.add(searchCriteria);
+       }
+       // Combine all criteria with andOperator
+       query.addCriteria(new Criteria().andOperator(criteriaList.toArray(new Criteria[0])));
+       query.with(pageable);
+       List<VisionAmbassadorResponse> visionAmbassadors = mongoTemplate.find(query, User.class)
+               .stream()
+               .map(VisionAmbassadorMapper::mapToVisionAmbassadorResponse)
+               .collect(Collectors.toList());
+       // Set patientCount for each ambassador
+       for (VisionAmbassadorResponse va  : visionAmbassadors) {
+           ObjectId ambassadorObjectId = new ObjectId(va.getId());
+           long patientCount = mongoTemplate.count(
+                   Query.query(Criteria.where("ambassadorId").is(ambassadorObjectId)),
+                   "referrals"
+           );
+           va.setPatientCount((int) patientCount);
+       }
+       long total = mongoTemplate.count(Query.of(query).limit(-1).skip(-1), User.class);
+       return new PageImpl<>(visionAmbassadors, pageable, total);
     }
-
-    query.with(pageable);
-
-    List<VisionAmbassadorResponse> visionAmbassadors = mongoTemplate.find(query, User.class)
-        .stream()
-        .map(VisionAmbassadorMapper::mapToVisionAmbassadorResponse)
-        .collect(Collectors.toList());
-
-    // Set patientCount for each ambassador
-    for (VisionAmbassadorResponse va : visionAmbassadors) {
-        ObjectId ambassadorObjectId = new ObjectId(va.getId());
-        long patientCount = mongoTemplate.count(
-            Query.query(Criteria.where("ambassadorId").is(ambassadorObjectId)),
-            "referrals" // Use the actual collection name if different
-        );
-        va.setPatientCount((int)patientCount);
-    }
-
-    long total = mongoTemplate.count(Query.of(query).limit(-1).skip(-1), User.class);
-
-    return new PageImpl<>(visionAmbassadors, pageable, total);
-}
+     
 
 //     @Override
 // public Page<VisionAmbassadorResponse> filterVisionAmbassador(String state, String city, String searchString, Pageable pageable) {

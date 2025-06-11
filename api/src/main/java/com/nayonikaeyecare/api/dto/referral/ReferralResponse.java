@@ -12,6 +12,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
+import com.nayonikaeyecare.api.entities.Hospital;
+import com.nayonikaeyecare.api.entities.Patient;
 
 @Builder
 
@@ -40,5 +42,7 @@ public record ReferralResponse(
         String hospitalCode,
         String ambassadorName,
         String ambassadorPhoneNumber,
-        String ambassadorEmail        // New field
+        String ambassadorEmail,
+        Hospital hospital,       // New field
+        Patient patient // New field for patient details
 ) {}
