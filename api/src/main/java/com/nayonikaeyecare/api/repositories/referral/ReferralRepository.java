@@ -6,7 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
-
+import org.springframework.data.domain.Sort;
 import com.nayonikaeyecare.api.entities.Referral;
 
 import java.util.List;
@@ -15,6 +15,7 @@ import java.util.List;
 public interface ReferralRepository extends MongoRepository<Referral, ObjectId> {
 
     List<Referral> findByAmbassadorId(ObjectId ambassadorId);
+    List<Referral> findByAmbassadorId(ObjectId ambassadorId, Sort sort);
 
     List<Referral> findByHospitalId(ObjectId hospitalId);
 

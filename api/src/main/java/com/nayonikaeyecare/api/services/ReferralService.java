@@ -211,8 +211,11 @@ public class ReferralService {
         // The following fetches referrals by VA ID, then tries to map with the *single* user fetched above.
         // This assumes all referrals for a given VA ID should be associated with that VA's linked User.
         final User finalUser = user; // User for all referrals mapped in this context
-        return referralRepository.findByAmbassadorId(new ObjectId(ambassadorIdString))
-                .stream()
+        Sort sort = Sort.by(Sort.Direction.DESC, "updatedAt"); 
+    
+        List<Referral> referrals = referralRepository.findByAmbassadorId(new ObjectId(ambassadorIdString), sort);
+    
+        return referrals.stream()
                 .map(referral -> {
                     // Logging specific to this referral within the loop
                     if (referral.getAmbassadorId() == null) {
@@ -225,7 +228,9 @@ public class ReferralService {
     }
 
     public List<ReferralResponse> getReferralsByHospitalId(String hospitalId) {
-        return referralRepository.findByHospitalId(new ObjectId(hospitalId))
+        Pageable pageable = PageRequest.of(0, Integer.MAX_VALUE, Sort.by(Sort.Direction.DESC, "updatedAt"));
+        return referralRepository.findByHospitalId(new ObjectId(hospitalId), pageable)
+                .getContent() // Get the List<Referral> from Page<Referral>
                 .stream()
                 .map(referral -> {
                     User user = null;
@@ -512,36 +517,44 @@ public class ReferralService {
                     Objects.equals(patient.getPhone(), request.getGuardianContact()) &&
                     patient.getGender().name().equalsIgnoreCase(request.getGender())) { // Assuming Patient.getGender() returns an enum
 
-                    referral.setRightEye(mapEyeDetailsDtoToEntity(request.getRightEye()));
-                    referral.setLeftEye(mapEyeDetailsDtoToEntity(request.getLeftEye()));
-                    referral.setSpectacleRequestedOn(request.getRequestedOn());
-                    referral.setIsSpectacleRequested(true);
+                        if (request.getStatus() == null || request.getStatus().trim().isEmpty()) {
+                            log.warn("Referral update for patient name '{}' (Guardian: {}) rejected: Status is missing or empty in the request.", request.getReferrals(), request.getGuardianContact());
+                            rejectedList.add(new RejectedReferralInfo(request.getReferrals(), request.getGuardianContact(), request.getGender(), request.getHospitalName()));
+                            rejectedCount++;
+                            foundMatch = true; 
+                            break; 
+                        }
+                        String newStatusString = request.getStatus().toUpperCase();
 
-                    try {
-                        patient.setStatus(request.getStatus().toUpperCase());
-                        referral.setStatus(Status.valueOf(request.getStatus().toUpperCase()));
-                    } catch (IllegalArgumentException e) {
-                        // Handle invalid status string if necessary, maybe log an error or add to rejected
-                        // For now, if status is invalid, we might skip update or use a default
-                        // Or, as per current logic, this transaction might fail if Status enum is strict
-                        // Let's assume valid status strings are provided for now.
-                        // If not, this specific referral update might be problematic.
-                        // A robust solution would be to add to rejectedList here too.
-                        System.err.println("Invalid status string: " + request.getStatus());
-                        // Decide if this means rejection or skipping status update
-                        // For now, let's assume it's a critical error for this record
-                        // and it should be rejected if status cannot be parsed.
-                        // However, the current loop structure will attempt to save if other fields are valid.
-                        // To reject, we'd need to move this record to rejectedList and break/continue.
-                        // Let's refine this: if status is crucial and invalid, reject.
-                    }
-                    hospital.setUpdatedAt(new Date());
-                    hospitalRepository.save(hospital);
-                    referral.setUpdatedAt(new Date());
-                    referralRepository.save(referral);
-                    updatedCount++;
-                    foundMatch = true;
-                    break; 
+                        try {
+                            patient.setStatus(newStatusString);
+                            referral.setStatus(Status.valueOf(newStatusString));
+
+                            referral.setRightEye(mapEyeDetailsDtoToEntity(request.getRightEye()));
+                            referral.setLeftEye(mapEyeDetailsDtoToEntity(request.getLeftEye()));
+                            referral.setSpectacleRequestedOn(request.getRequestedOn());
+                            referral.setIsSpectacleRequested(true);
+
+                            patient.setUpdatedAt(new Date()); 
+                            patientRepository.save(patient);   
+
+                            referral.setUpdatedAt(new Date());
+                            referralRepository.save(referral);
+                            
+                            // Commenting out hospital update as it seems unrelated to this specific task
+                            // hospital.setUpdatedAt(new Date()); 
+                            // hospitalRepository.save(hospital);
+
+                            updatedCount++;
+                            foundMatch = true;
+                            break; 
+                        } catch (IllegalArgumentException e) {
+                            log.warn("Referral update for patient name '{}' (Guardian: {}) rejected: Invalid status string '{}' provided in request.", request.getReferrals(), request.getGuardianContact(), request.getStatus(), e);
+                            rejectedList.add(new RejectedReferralInfo(request.getReferrals(), request.getGuardianContact(), request.getGender(), request.getHospitalName()));
+                            rejectedCount++;
+                            foundMatch = true; 
+                            break; 
+                        }
                 }
             }
 

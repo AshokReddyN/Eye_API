@@ -12,7 +12,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.util.Date;
 import java.util.List;
-
+import java.util.ArrayList;
 @Document(value = "patients")
 @CompoundIndexes({
         @CompoundIndex(name = "ambassador_name", def = "{'ambassadorId': 1, 'name': 1}"),
@@ -36,7 +36,8 @@ public class Patient {
     private String status;
     private String city;
     private String state;
-    private List<String> referralIds;
+    @Builder.Default
+    private List<String> referralIds = new ArrayList<>();
     private Guardian guardianContact;
     private Date createdAt;
     private Date updatedAt;
