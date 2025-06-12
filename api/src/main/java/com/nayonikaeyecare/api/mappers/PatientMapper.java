@@ -11,7 +11,7 @@ public class PatientMapper {
                 .name(patient.getName())
                 .ambassadorId(patient.getAmbassadorId())
                 .gender(patient.getGender())
-                .ageRange(patient.getAgeRange())
+                .age(patient.getAge())
                 .phone(patient.getPhone())
                 .email(patient.getEmail())
                 .city(patient.getCity())

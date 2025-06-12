@@ -9,7 +9,7 @@ public class PatientReportJsonDto {
     private String id;
     private String childName;
     private String sex;
-    private String ageRange;
+    private String age;
     private String treatment;
     private EyeDetails rightEye;
     private EyeDetails leftEye;

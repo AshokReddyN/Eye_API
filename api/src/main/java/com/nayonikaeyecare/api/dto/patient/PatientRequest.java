@@ -35,7 +35,7 @@ public class PatientRequest {
     private Gender gender;
 
     @NotBlank(message = "Age range is required")
-    private String ageRange;
+    private String age;
 
     @Pattern(regexp = "^[0-9]{10}$", message = "Phone number must be a valid 10-digit number")
     private String phone;

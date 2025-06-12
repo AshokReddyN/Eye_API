@@ -50,7 +50,7 @@ class PatientReportControllerTest {
                 report1.setId("1");
                 report1.setChildName("vignesh kumar");
                 report1.setSex("m");
-                report1.setAgeRange("5-10");
+                report1.setAge("5-10");
                 report1.setCityName("puducherry");
                 report1.setTreatment("Refraction");
                 report1.setRightSph("0");
@@ -64,7 +64,7 @@ class PatientReportControllerTest {
                 report2.setId("2");
                 report2.setChildName("Kirubashini");
                 report2.setSex("F");
-                report2.setAgeRange("5-10");
+                report2.setAge("5-10");
                 report2.setCityName("Mugaiyur");
                 report2.setPhoneNo(9003396168L);
                 report2.setTreatment("Surgery");

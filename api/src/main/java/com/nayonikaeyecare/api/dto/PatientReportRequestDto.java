@@ -15,7 +15,7 @@ public class PatientReportRequestDto {
     private String sex;
 
     @JsonProperty("Age Range")
-    private String ageRange;
+    private String age;
 
     @JsonProperty("City Name")
     private String cityName;

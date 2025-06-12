@@ -29,7 +29,7 @@ public class Patient {
     private String name;
     private String ambassadorId;
     private Gender gender; // MALE , FEMALE
-    private String ageRange;
+    private String age;
     private String phone;
     private String email;
     private String hospitalName;

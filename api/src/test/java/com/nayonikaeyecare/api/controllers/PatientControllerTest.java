@@ -53,7 +53,7 @@ class PatientControllerTest {
         testRequest = PatientRequest.builder()
                 .name("John Doe")
                 .phone("+91-9876543210")
-                .ageRange("5-10")
+                .age("5-10")
                 .city("Bangalore")
                 .state("Karnataka")
                 .build();
@@ -62,7 +62,7 @@ class PatientControllerTest {
                 .id("test-id")
                 .name("John Doe")
                 .phone("+91-9876543210")
-                .ageRange("5-10")
+                .age("5-10")
                 .city("Bangalore")
                 .state("Karnataka")
                 .createdAt(new Date())

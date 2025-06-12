@@ -22,7 +22,7 @@ public class PatientResponse {
     private String ambassadorId;
     private String status;
     private Gender gender;
-    private String ageRange;
+    private String age;
     private String phone;
     private String email;
     private String city;

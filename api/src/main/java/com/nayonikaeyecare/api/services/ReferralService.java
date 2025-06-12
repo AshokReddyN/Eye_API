@@ -541,9 +541,8 @@ public class ReferralService {
                             referral.setUpdatedAt(new Date());
                             referralRepository.save(referral);
                             
-                            // Commenting out hospital update as it seems unrelated to this specific task
-                            // hospital.setUpdatedAt(new Date()); 
-                            // hospitalRepository.save(hospital);
+                            hospital.setUpdatedAt(new Date()); 
+                            hospitalRepository.save(hospital);
 
                             updatedCount++;
                             foundMatch = true;

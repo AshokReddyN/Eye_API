@@ -31,7 +31,7 @@ public class PatientService {
                 .name(request.getName())
                 .ambassadorId(request.getAmbassadorId())
                 .gender(request.getGender())
-                .ageRange(request.getAgeRange())
+                .age(request.getAge())
                 .phone(request.getPhone())
                 .hospitalName("")
                 .status(Status.INPROGRESS.name())   
@@ -163,7 +163,7 @@ public class PatientService {
         existingPatient.setName(request.getName());
         existingPatient.setAmbassadorId(request.getAmbassadorId());
         existingPatient.setGender(request.getGender());
-        existingPatient.setAgeRange(request.getAgeRange());
+        existingPatient.setAge(request.getAge());
         existingPatient.setPhone(request.getPhone());
         existingPatient.setEmail(request.getEmail());
         existingPatient.setHospitalName(request.getHospitalName());

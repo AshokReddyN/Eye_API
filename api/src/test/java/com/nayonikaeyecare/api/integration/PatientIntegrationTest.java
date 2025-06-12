@@ -24,7 +24,7 @@ class PatientIntegrationTest {
         // Arrange
         PatientRequest request = PatientRequest.builder()
                 .name("Integration Test Patient")
-                .ageRange("5-10")
+                .age("5-10")
                 .gender(Gender.FEMALE)
                 .phone("9876543210")
                 .build();

@@ -105,7 +105,7 @@ public class ReportJsonImportService {
                 .leftEye(createEyeDetails(record.getLeftSph(), record.getLeftCyl().toString(),
                         record.getLeftAxis().toString()))
                 .patientName(record.getPatientName())
-                .ageRange(record.getAgeRange())
+                .age(record.getAge())
                 .hospitalName(record.getHospitalName())
                 .city(record.getCity())
                 .state(record.getState())
@@ -127,7 +127,7 @@ public class ReportJsonImportService {
                         createEyeDetailsDocument(record.getLeftSph(), record.getLeftCyl().toString(),
                                 record.getLeftAxis().toString()))
                 .append("patientName", record.getPatientName())
-                .append("ageRange", record.getAgeRange())
+                .append("age", record.getAge())
                 .append("hospitalName", record.getHospitalName())
                 .append("city", record.getCity())
                 .append("state", record.getState())

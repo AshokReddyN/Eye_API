@@ -29,7 +29,7 @@ public class Referral {
     private Status status;
     private ObjectId patientId;
     private String patientName;
-    private String ageRange;
+    private String age;
     private String gender;
     private String hospitalName;
     private String city;
