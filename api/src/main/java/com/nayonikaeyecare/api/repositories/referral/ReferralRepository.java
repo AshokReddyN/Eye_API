@@ -8,7 +8,7 @@ import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.domain.Sort;
 import com.nayonikaeyecare.api.entities.Referral;
-
+import java.util.Optional;
 import java.util.List;
 
 @Repository
@@ -30,4 +30,5 @@ public interface ReferralRepository extends MongoRepository<Referral, ObjectId> 
     long countByHospitalId(ObjectId hospitalId);
     long countByHospitalIdAndIsSpectacleRequestedTrue(ObjectId hospitalId);
     List<Referral> findAllByIdIn(List<ObjectId> ids);
+    Optional<Referral> findByPatientIdAndHospitalId(ObjectId patientId, ObjectId hospitalId);
 }

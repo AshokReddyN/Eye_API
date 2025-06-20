@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.nayonikaeyecare.api.services.VisionAmbassadorService;
+import com.nayonikaeyecare.api.services.UserService;
+
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,11 +24,11 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
-import com.nayonikaeyecare.api.dto.user.AuthenticationRequest;
-import com.nayonikaeyecare.api.dto.user.AuthenticationResponse;
 import com.nayonikaeyecare.api.dto.visionambassador.VisionAmbassadorRequest;
 import com.nayonikaeyecare.api.dto.visionambassador.VisionAmbassadorResponse;
 import com.nayonikaeyecare.api.entities.VisionAmbassador;
+import com.nayonikaeyecare.api.entities.user.User;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import java.util.List;
 
@@ -41,10 +43,13 @@ public class VisionAmbassadorController {
     @Autowired
     private VisionAmbassadorService visionAmbassadorService;
 
+    @Autowired
+    private UserService userService;
 
-    
 
-    
+
+
+
     @PostMapping("/addVisionAmbassador")
     @ResponseStatus(HttpStatus.CREATED)
     public void createVisionAmbassador(@RequestBody VisionAmbassadorRequest visionAmbassadorRequest) {
@@ -87,11 +92,45 @@ public class VisionAmbassadorController {
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<VisionAmbassador> findByUserId(@PathVariable String userId) {
-        VisionAmbassador ambassador = visionAmbassadorService.findByUserId(userId);
-        if (ambassador != null) {
-            return ResponseEntity.ok(ambassador);
+    public ResponseEntity<VisionAmbassadorResponse> findByUserId(@PathVariable String userId) {
+        VisionAmbassador visionAmbassador = visionAmbassadorService.findByUserId(userId);
+        if (visionAmbassador == null) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.notFound().build();
+
+        String actualUserId = visionAmbassador.getUserId();
+        User user = userService.getUserById(actualUserId);
+        if (user == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        VisionAmbassadorResponse dto = new VisionAmbassadorResponse();
+        dto.setId(visionAmbassador.getId().toHexString());
+
+        String firstName = user.getFirstName();
+        String lastName = user.getLastName();
+        String name = "";
+        if (firstName != null && !firstName.isEmpty()) {
+            name += firstName;
+        }
+        if (lastName != null && !lastName.isEmpty()) {
+            if (!name.isEmpty()) {
+                name += " ";
+            }
+            name += lastName;
+        }
+        dto.setName(name);
+
+        dto.setPhoneNumber(user.getPhoneNumber());
+        dto.setUserId(visionAmbassador.getUserId());
+        dto.setStatus(visionAmbassador.isStatus());
+        dto.setCity(user.getCity());
+        dto.setState(user.getState());
+        dto.setLanguage(user.getLanguage());
+        dto.setCreatedAt(visionAmbassador.getCreatedAt());
+        dto.setUpdatedAt(visionAmbassador.getUpdatedAt());
+        dto.setPatientCount(0); // Or null, as per requirement
+
+        return ResponseEntity.ok(dto);
     }
 }

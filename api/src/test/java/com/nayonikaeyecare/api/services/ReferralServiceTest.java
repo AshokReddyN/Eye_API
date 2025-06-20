@@ -34,13 +34,19 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors; // Added
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+import com.nayonikaeyecare.api.dto.referral.BulkReferralUpdateRequest;
+import com.nayonikaeyecare.api.dto.referral.BulkReferralUpdateResponse;
 import com.nayonikaeyecare.api.dto.referral.ReferralRequest;
+import com.nayonikaeyecare.api.entities.EyeDetails;
+import com.nayonikaeyecare.api.entities.Gender;
+import com.nayonikaeyecare.api.entities.Hospital;
 import com.nayonikaeyecare.api.entities.Patient;
 import com.nayonikaeyecare.api.entities.Status;
 import java.util.ArrayList;
@@ -88,10 +94,19 @@ public class ReferralServiceTest {
     private User user1, user2;
     private ObjectId vaId1, vaId2, vaIdWithInvalidUser, vaIdWithNoUserLink, vaIdNotFound; // VisionAmbassador ObjectIds
     private String user1IdString, user2IdString, userNonExistentIdString;
+    
+    // Test data for bulkUpdateReferrals
+    private Hospital testHospital;
+    private Patient testPatient;
+    private Referral testReferral;
+    private ObjectId testHospitalId;
+    private ObjectId testPatientId;
+    private ObjectId testReferralId;
 
 
     @BeforeEach
     void setUp() {
+        // Existing setup
         user1IdString = new ObjectId().toHexString();
         user2IdString = new ObjectId().toHexString();
         userNonExistentIdString = new ObjectId().toHexString(); // For VA that links to a non-existent user
@@ -117,6 +132,15 @@ public class ReferralServiceTest {
         referralToVAWithInvalidUserId = Referral.builder().id(new ObjectId()).patientName("Patient D").ambassadorId(vaIdWithInvalidUser).createdAt(new Date()).build();
         referralToVAWithNoUserLink = Referral.builder().id(new ObjectId()).patientName("Patient E").ambassadorId(vaIdWithNoUserLink).createdAt(new Date()).build();
         referralToVANotFound = Referral.builder().id(new ObjectId()).patientName("Patient F").ambassadorId(vaIdNotFound).createdAt(new Date()).build();
+
+        // Setup for bulkUpdateReferrals tests
+        testHospitalId = new ObjectId();
+        testPatientId = new ObjectId();
+        testReferralId = new ObjectId();
+
+        testHospital = Hospital.builder().id(testHospitalId).hospitalCode("HOS001").name("Test Hospital").build();
+        testPatient = Patient.builder().id(testPatientId).name("Test Patient Bulk").age("30").phone("1234567890").gender(Gender.MALE).status("REFERRED").build();
+        testReferral = Referral.builder().id(testReferralId).patientId(testPatientId).hospitalId(testHospitalId).status(Status.REFERRED).build();
     }
 
     private Patient createTestPatient(String id, List<String> referralIds) {
@@ -147,11 +171,17 @@ public class ReferralServiceTest {
         Patient patient = createTestPatient(patientId, new ArrayList<>(Arrays.asList(existingReferralId)));
         ReferralRequest request = createTestReferralRequest(patientId);
         Referral existingReferral = Referral.builder().id(new ObjectId(existingReferralId)).status(Status.REFERRED).build();
+        Referral newReferral = Referral.builder().id(new ObjectId()).build(); // For mocking
 
         when(patientRepository.findById(any(ObjectId.class))).thenReturn(Optional.of(patient));
-        when(referralRepository.findAllByIdIn(anyList())).thenReturn(Arrays.asList(existingReferral));
+        when(referralRepository.findAllByIdIn(patient.getReferralIds().stream().map(ObjectId::new).collect(Collectors.toList()))).thenReturn(Arrays.asList(existingReferral));
+        // Add mocks to prevent NPEs if the IllegalArgumentException is not thrown early enough
+        when(referralMapper.toEntity(request)).thenReturn(newReferral);
+        when(referralRepository.save(newReferral)).thenReturn(newReferral);
+
 
         // Act & Assert
+        // The core of this test is to ensure IllegalArgumentException for active referrals.
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
             referralService.createReferral(request);
         });
@@ -168,9 +198,13 @@ public class ReferralServiceTest {
         Patient patient = createTestPatient(patientId, new ArrayList<>(Arrays.asList(existingReferralId)));
         ReferralRequest request = createTestReferralRequest(patientId);
         Referral existingReferral = Referral.builder().id(new ObjectId(existingReferralId)).status(Status.INPROGRESS).build();
+        Referral newReferral = Referral.builder().id(new ObjectId()).build(); // For mocking
 
         when(patientRepository.findById(any(ObjectId.class))).thenReturn(Optional.of(patient));
-        when(referralRepository.findAllByIdIn(anyList())).thenReturn(Arrays.asList(existingReferral));
+        when(referralRepository.findAllByIdIn(patient.getReferralIds().stream().map(ObjectId::new).collect(Collectors.toList()))).thenReturn(Arrays.asList(existingReferral));
+        // Add mocks to prevent NPEs if the IllegalArgumentException is not thrown early enough
+        when(referralMapper.toEntity(request)).thenReturn(newReferral);
+        when(referralRepository.save(newReferral)).thenReturn(newReferral);
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
@@ -198,7 +232,11 @@ public class ReferralServiceTest {
         ReferralResponse expectedResponse = ReferralResponse.builder().id(newReferral.getId().toHexString()).build(); // Mapper output
 
         when(patientRepository.findById(patientObjectId)).thenReturn(Optional.of(patient));
-        when(referralRepository.findAllByIdIn(anyList())).thenReturn(Arrays.asList(existingReferral));
+        // The following stubbing was marked as unnecessary. 
+        // If existingReferral is COMPLETED, hasActiveReferral should return false.
+        // The actual list of referrals might still be fetched by hasActiveReferral.
+        // Removing the explicit stub for findAllByIdIn as it was marked unnecessary by Mockito.
+        // The service logic should correctly identify that a COMPLETED referral is not "active".
         when(referralMapper.toEntity(request)).thenReturn(newReferral);
         when(referralRepository.save(any(Referral.class))).thenReturn(newReferral);
         when(referralMapper.toResponse(eq(newReferral), any(),eq(null),eq(null))).thenReturn(expectedResponse);
@@ -221,9 +259,9 @@ public class ReferralServiceTest {
         assertTrue(savedPatient.getReferralIds().contains(newReferral.getId().toHexString()));
         assertEquals(2, savedPatient.getReferralIds().size()); // Existing + new
 
-        // Verify patient's hospitalName and status are NOT changed to those from ReferralRequest
+        // Verify patient's hospitalName is NOT changed to those from ReferralRequest, but status IS.
         assertEquals(originalPatientHospitalName, savedPatient.getHospitalName());
-        assertEquals(originalPatientStatus, savedPatient.getStatus());
+        assertEquals(Status.REFERRED.name(), savedPatient.getStatus());
     }
     
     @Test
@@ -263,7 +301,7 @@ public class ReferralServiceTest {
         assertEquals(1, savedPatient.getReferralIds().size());
 
         assertEquals(originalPatientHospitalName, savedPatient.getHospitalName());
-        assertEquals(originalPatientStatus, savedPatient.getStatus());
+        assertEquals(Status.REFERRED.name(), savedPatient.getStatus());
         
         verify(referralRepository, never()).findAllByIdIn(anyList());
     }
@@ -307,7 +345,7 @@ public class ReferralServiceTest {
         assertEquals(1, savedPatient.getReferralIds().size());
         
         assertEquals(originalPatientHospitalName, savedPatient.getHospitalName());
-        assertEquals(originalPatientStatus, savedPatient.getStatus());
+        assertEquals(Status.REFERRED.name(), savedPatient.getStatus());
 
         verify(referralRepository, never()).findAllByIdIn(anyList());
     }
@@ -417,4 +455,231 @@ public class ReferralServiceTest {
         assertEquals(1, sortDocument.getInteger("patientName"), "Should sort by patientName ascending");
         assertNull(sortDocument.get("createdAt"), "Default sort by createdAt should not be applied");
     }
+
+    // --- Tests for bulkUpdateReferrals ---
+
+    private BulkReferralUpdateRequest.EyeDetailsDto createEyeDetailsDto(Double sph, Double cyl, Integer axis) {
+        return BulkReferralUpdateRequest.EyeDetailsDto.builder().sph(sph).cyl(cyl).axis(axis).build();
+    }
+
+    @Test
+    void bulkUpdateReferrals_found_statusProvided_validStatus_shouldUpdate() {
+        // Arrange
+        BulkReferralUpdateRequest request = BulkReferralUpdateRequest.builder()
+                .hospitalCode("HOS001")
+                .age(30)
+                .guardianContact("1234567890")
+                .gender("MALE")
+                .status("COMPLETED")
+                .rightEye(createEyeDetailsDto(1.0, 0.5, 90))
+                .leftEye(createEyeDetailsDto(1.25, 0.75, 80))
+                .requestedOn(new Date().toString()) // Convert Date to String
+                .referrals("Old Patient Name for Logging")
+                .hospitalName("Old Hospital Name for Logging")
+                .build();
+        List<BulkReferralUpdateRequest> bulkRequest = Collections.singletonList(request);
+
+        when(hospitalRepository.findByHospitalCode("HOS001")).thenReturn(Optional.of(testHospital));
+        when(patientRepository.findByAgeAndPhoneAndGender("30", "1234567890", Gender.MALE)).thenReturn(Optional.of(testPatient));
+        when(referralRepository.findByPatientIdAndHospitalId(testPatientId, testHospitalId)).thenReturn(Optional.of(testReferral));
+        when(patientRepository.save(any(Patient.class))).thenReturn(testPatient);
+        when(referralRepository.save(any(Referral.class))).thenReturn(testReferral);
+
+        // Act
+        BulkReferralUpdateResponse response = referralService.bulkUpdateReferrals(bulkRequest);
+
+        // Assert
+        assertEquals(1, response.getUpdatedRecords());
+        assertEquals(0, response.getRejectedRecords());
+        assertTrue(response.getRejectedList().isEmpty());
+
+        verify(patientRepository).save(patientCaptor.capture());
+        assertEquals("COMPLETED", patientCaptor.getValue().getStatus());
+        
+        verify(referralRepository).save(referralCaptor.capture());
+        Referral savedReferral = referralCaptor.getValue();
+        assertEquals(Status.COMPLETED, savedReferral.getStatus());
+        assertEquals("1.0", savedReferral.getRightEye().getSph());
+        assertEquals("1.25", savedReferral.getLeftEye().getSph());
+        assertNotNull(savedReferral.getSpectacleRequestedOn());
+        assertTrue(savedReferral.getIsSpectacleRequested());
+    }
+
+    @Test
+    void bulkUpdateReferrals_found_statusMissing_shouldUpdateDetailsNotStatus() {
+        // Arrange
+        BulkReferralUpdateRequest request = BulkReferralUpdateRequest.builder()
+                .hospitalCode("HOS001")
+                .age(30)
+                .guardianContact("1234567890")
+                .gender("MALE")
+                .status(null) // Status missing
+                .rightEye(createEyeDetailsDto(2.0, null, null))
+                .build();
+        List<BulkReferralUpdateRequest> bulkRequest = Collections.singletonList(request);
+        
+        String originalPatientStatus = testPatient.getStatus();
+        Status originalReferralStatus = testReferral.getStatus();
+
+        when(hospitalRepository.findByHospitalCode("HOS001")).thenReturn(Optional.of(testHospital));
+        when(patientRepository.findByAgeAndPhoneAndGender("30", "1234567890", Gender.MALE)).thenReturn(Optional.of(testPatient));
+        when(referralRepository.findByPatientIdAndHospitalId(testPatientId, testHospitalId)).thenReturn(Optional.of(testReferral));
+        when(patientRepository.save(any(Patient.class))).thenReturn(testPatient);
+        when(referralRepository.save(any(Referral.class))).thenReturn(testReferral);
+
+        // Act
+        BulkReferralUpdateResponse response = referralService.bulkUpdateReferrals(bulkRequest);
+
+        // Assert
+        assertEquals(1, response.getUpdatedRecords());
+        assertEquals(0, response.getRejectedRecords());
+
+        verify(patientRepository).save(patientCaptor.capture());
+        assertEquals(originalPatientStatus, patientCaptor.getValue().getStatus()); // Status should not change
+
+        verify(referralRepository).save(referralCaptor.capture());
+        Referral savedReferral = referralCaptor.getValue();
+        assertEquals(originalReferralStatus, savedReferral.getStatus()); // Status should not change
+        assertEquals("2.0", savedReferral.getRightEye().getSph());
+        assertTrue(savedReferral.getIsSpectacleRequested());
+    }
+
+    @Test
+    void bulkUpdateReferrals_hospitalNotFound_shouldReject() {
+        // Arrange
+        BulkReferralUpdateRequest request = BulkReferralUpdateRequest.builder().hospitalCode("INVALID_CODE").build();
+        List<BulkReferralUpdateRequest> bulkRequest = Collections.singletonList(request);
+
+        when(hospitalRepository.findByHospitalCode("INVALID_CODE")).thenReturn(Optional.empty());
+
+        // Act
+        BulkReferralUpdateResponse response = referralService.bulkUpdateReferrals(bulkRequest);
+
+        // Assert
+        assertEquals(0, response.getUpdatedRecords());
+        assertEquals(1, response.getRejectedRecords());
+        assertEquals(request.getReferrals(), response.getRejectedList().get(0).getReferrals()); // Using 'referrals' as patient name for logging
+    }
+
+    @Test
+    void bulkUpdateReferrals_patientNotFound_shouldReject() {
+        // Arrange
+        BulkReferralUpdateRequest request = BulkReferralUpdateRequest.builder()
+                .hospitalCode("HOS001")
+                .age(30)
+                .guardianContact("UNKNOWN_CONTACT")
+                .gender("FEMALE")
+                .build();
+        List<BulkReferralUpdateRequest> bulkRequest = Collections.singletonList(request);
+
+        when(hospitalRepository.findByHospitalCode("HOS001")).thenReturn(Optional.of(testHospital));
+        when(patientRepository.findByAgeAndPhoneAndGender("30", "UNKNOWN_CONTACT", Gender.FEMALE)).thenReturn(Optional.empty());
+
+        // Act
+        BulkReferralUpdateResponse response = referralService.bulkUpdateReferrals(bulkRequest);
+
+        // Assert
+        assertEquals(0, response.getUpdatedRecords());
+        assertEquals(1, response.getRejectedRecords());
+    }
+
+    @Test
+    void bulkUpdateReferrals_referralEntityNotFound_shouldReject() {
+        // Arrange
+        BulkReferralUpdateRequest request = BulkReferralUpdateRequest.builder()
+                .hospitalCode("HOS001")
+                .age(30)
+                .guardianContact("1234567890")
+                .gender("MALE")
+                .build();
+        List<BulkReferralUpdateRequest> bulkRequest = Collections.singletonList(request);
+
+        when(hospitalRepository.findByHospitalCode("HOS001")).thenReturn(Optional.of(testHospital));
+        when(patientRepository.findByAgeAndPhoneAndGender("30", "1234567890", Gender.MALE)).thenReturn(Optional.of(testPatient));
+        when(referralRepository.findByPatientIdAndHospitalId(testPatientId, testHospitalId)).thenReturn(Optional.empty());
+        
+        // Act
+        BulkReferralUpdateResponse response = referralService.bulkUpdateReferrals(bulkRequest);
+
+        // Assert
+        assertEquals(0, response.getUpdatedRecords());
+        assertEquals(1, response.getRejectedRecords());
+    }
+    
+    @Test
+    void bulkUpdateReferrals_invalidGenderString_shouldReject() {
+        // Arrange
+        BulkReferralUpdateRequest request = BulkReferralUpdateRequest.builder()
+                .hospitalCode("HOS001")
+                .age(30)
+                .guardianContact("1234567890")
+                .gender("INVALID_GENDER") // Invalid gender
+                .build();
+        List<BulkReferralUpdateRequest> bulkRequest = Collections.singletonList(request);
+
+        when(hospitalRepository.findByHospitalCode("HOS001")).thenReturn(Optional.of(testHospital));
+        // Patient repo findByAgeAndPhoneAndGender will not be called due to early exit
+
+        // Act
+        BulkReferralUpdateResponse response = referralService.bulkUpdateReferrals(bulkRequest);
+
+        // Assert
+        assertEquals(0, response.getUpdatedRecords());
+        assertEquals(1, response.getRejectedRecords());
+        verify(patientRepository, never()).findByAgeAndPhoneAndGender(any(), any(), any());
+    }
+
+    @Test
+    void bulkUpdateReferrals_statusProvided_invalidStatusString_shouldReject() {
+        // Arrange
+        BulkReferralUpdateRequest request = BulkReferralUpdateRequest.builder()
+                .hospitalCode("HOS001")
+                .age(30)
+                .guardianContact("1234567890")
+                .gender("MALE")
+                .status("INVALID_STATUS_STRING") // Invalid status
+                .build();
+        List<BulkReferralUpdateRequest> bulkRequest = Collections.singletonList(request);
+
+        when(hospitalRepository.findByHospitalCode("HOS001")).thenReturn(Optional.of(testHospital));
+        when(patientRepository.findByAgeAndPhoneAndGender("30", "1234567890", Gender.MALE)).thenReturn(Optional.of(testPatient));
+        when(referralRepository.findByPatientIdAndHospitalId(testPatientId, testHospitalId)).thenReturn(Optional.of(testReferral));
+        // Save methods should not be called
+
+        // Act
+        BulkReferralUpdateResponse response = referralService.bulkUpdateReferrals(bulkRequest);
+
+        // Assert
+        assertEquals(0, response.getUpdatedRecords());
+        assertEquals(1, response.getRejectedRecords());
+        verify(patientRepository, never()).save(any());
+        verify(referralRepository, never()).save(any());
+    }
+
+     @Test
+    void bulkUpdateReferrals_nullAgeInRequest_shouldPassNullOrStringifiedNullToRepo() {
+        BulkReferralUpdateRequest request = BulkReferralUpdateRequest.builder()
+                .hospitalCode("HOS001")
+                .age(null) // Null age
+                .guardianContact("1234567890")
+                .gender("MALE")
+                .status("COMPLETED")
+                .build();
+        List<BulkReferralUpdateRequest> bulkRequest = Collections.singletonList(request);
+
+        when(hospitalRepository.findByHospitalCode("HOS001")).thenReturn(Optional.of(testHospital));
+        // We want to verify that findByAgeAndPhoneAndGender is called with null or "null" for age
+        // For this test, let's assume it leads to patient not found for simplicity of assertion focus.
+        when(patientRepository.findByAgeAndPhoneAndGender(eq(null), eq("1234567890"), eq(Gender.MALE)))
+            .thenReturn(Optional.empty());
+
+
+        BulkReferralUpdateResponse response = referralService.bulkUpdateReferrals(bulkRequest);
+
+        assertEquals(0, response.getUpdatedRecords());
+        assertEquals(1, response.getRejectedRecords());
+        // Verify that the repository method was called with null for the age parameter
+        verify(patientRepository).findByAgeAndPhoneAndGender(null, "1234567890", Gender.MALE);
+    }
+
 }

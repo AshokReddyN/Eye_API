@@ -211,5 +211,42 @@ public class HospitalService {
         }
     
         return inserted;
-    }        
+    } 
+    
+    public int saveAllHospitalsIfHospitalCodeNotExists(List<HospitalRequest> hospitalRequests) {
+        int inserted = 0;
+        if (hospitalRequests == null || hospitalRequests.isEmpty()) {
+            throw new IllegalArgumentException("Hospital requests list cannot be null or empty");
+        }
+        hospitalRequests.forEach(this::validateHospitalRequest);
+    
+        // Fetch all existing codes and normalize to lower case
+        List<String> existingCodes = hospitalRepository.findAll().stream()
+                .map(h -> h.getHospitalCode().toLowerCase())
+                .toList();
+    
+        List<Hospital> hospitalsToInsert = hospitalRequests.stream()
+                .filter(request -> !existingCodes.contains(request.hospitalCode().toLowerCase()))
+                .map(request -> Hospital.builder()
+                        .hospitalCode(request.hospitalCode())
+                        .name(request.name())
+                        .address(request.address())
+                        .services(request.services())
+                        .status(request.status())
+                        .coordinator(request.coordinator())
+                        .coordinator_phonenumber(request.coordinator_phonenumber())
+                        .coordinator_email(request.coordinator_email())
+                        .googleLink(request.googleLink())
+                        .registration_date(request.registration_date())
+                        .build())
+                .toList();
+    
+        if (hospitalsToInsert.isEmpty()) {
+            throw new IllegalArgumentException("Hospital with the given codes already exists");
+        } else {
+            inserted = hospitalRepository.saveAll(hospitalsToInsert).size();
+        }
+    
+        return inserted;
+    }
 }

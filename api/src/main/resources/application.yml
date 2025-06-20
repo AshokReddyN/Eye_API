@@ -6,7 +6,7 @@ spring:
       uri: mongodb+srv://nayonikaeyecare:b7yjInwQUxCCghBT@nayonikacluster.fqrcfog.mongodb.net/nayonikaDev
       database: nayonikaDev
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
+    active: ${SPRING_PROFILES_ACTIVE:dev}
 server:
   port: 8081
 

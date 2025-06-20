@@ -1,12 +1,14 @@
 package com.nayonikaeyecare.api.dto.referral;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder; // Added
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder // Added
 public class BulkReferralUpdateRequest {
 
     private String hospitalName;
@@ -26,6 +28,7 @@ public class BulkReferralUpdateRequest {
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
+    @Builder // Added
     public static class EyeDetailsDto {
         private Double sph;
         private Double cyl;

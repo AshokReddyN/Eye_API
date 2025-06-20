@@ -90,7 +90,7 @@ public class HospitalController {
                 return ResponseEntity.badRequest().body("No Hospital data provided");
             }
 
-            int insertedCount = hospitalService.saveAllHospitalsIfNameNotExists(hospitals);
+            int insertedCount = hospitalService.saveAllHospitalsIfHospitalCodeNotExists(hospitals);
             return ResponseEntity.ok("Successfully uploaded and saved " + insertedCount + " hospitals (skipped duplicates)");
         } catch (Exception e) {
             e.printStackTrace();

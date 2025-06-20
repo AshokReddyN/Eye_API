@@ -18,6 +18,7 @@ import com.nayonikaeyecare.api.dto.referral.ReferralResponse;
 import com.nayonikaeyecare.api.entities.EyeDetails;
 import com.nayonikaeyecare.api.entities.Hospital;
 import com.nayonikaeyecare.api.entities.Patient;
+import com.nayonikaeyecare.api.entities.Gender;
 
 import com.nayonikaeyecare.api.entities.Referral;
 import com.nayonikaeyecare.api.entities.Status;
@@ -37,6 +38,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j; // Added
@@ -71,6 +73,11 @@ public class ReferralService {
         referral.setStatus(Status.REFERRED); // Set initial status to INPROGRESS
         Referral savedReferral = referralRepository.save(referral);
         
+        // Add new referral ID to the list
+        if (patient.getReferralIds() == null) {
+            patient.setReferralIds(new ArrayList<>());
+        }
+
         // Add new referral ID to the list
         patient.getReferralIds().add(savedReferral.getId().toString());
         patient.setStatus(Status.REFERRED.name()); // Set patient status to REFERRED
@@ -502,64 +509,91 @@ public class ReferralService {
         List<RejectedReferralInfo> rejectedList = new ArrayList<>();
 
         for (BulkReferralUpdateRequest request : bulkRequest) {
-            Hospital hospital = hospitalRepository.findByHospitalCode(request.getHospitalCode()).orElse(null);
-            if (hospital == null) {
+            Optional<Hospital> hospitalOpt = hospitalRepository.findByHospitalCode(request.getHospitalCode());
+            if (!hospitalOpt.isPresent()) {
+                log.warn("Hospital not found for code: {}. Rejecting referral for contact: {}", request.getHospitalCode(), request.getGuardianContact());
                 rejectedList.add(new RejectedReferralInfo(request.getReferrals(), request.getGuardianContact(), request.getGender(), request.getHospitalName()));
                 rejectedCount++;
                 continue;
             }
-            List<Referral> potentialReferrals = referralRepository.findByPatientNameAndHospitalId(request.getReferrals(), hospital.getId());
-            boolean foundMatch = false;
-            for (Referral referral : potentialReferrals) {
-                Patient patient = patientRepository.findById(referral.getPatientId()).orElse(null);
-                if (patient != null &&
-                    // patient.getGuardian() != null && // This check is removed
-                    Objects.equals(patient.getPhone(), request.getGuardianContact()) &&
-                    patient.getGender().name().equalsIgnoreCase(request.getGender())) { // Assuming Patient.getGender() returns an enum
+            Hospital hospital = hospitalOpt.get();
 
-                        if (request.getStatus() == null || request.getStatus().trim().isEmpty()) {
-                            log.warn("Referral update for patient name '{}' (Guardian: {}) rejected: Status is missing or empty in the request.", request.getReferrals(), request.getGuardianContact());
-                            rejectedList.add(new RejectedReferralInfo(request.getReferrals(), request.getGuardianContact(), request.getGender(), request.getHospitalName()));
-                            rejectedCount++;
-                            foundMatch = true; 
-                            break; 
-                        }
-                        String newStatusString = request.getStatus().toUpperCase();
-
-                        try {
-                            patient.setStatus(newStatusString);
-                            referral.setStatus(Status.valueOf(newStatusString));
-
-                            referral.setRightEye(mapEyeDetailsDtoToEntity(request.getRightEye()));
-                            referral.setLeftEye(mapEyeDetailsDtoToEntity(request.getLeftEye()));
-                            referral.setSpectacleRequestedOn(request.getRequestedOn());
-                            referral.setIsSpectacleRequested(true);
-
-                            patient.setUpdatedAt(new Date()); 
-                            patientRepository.save(patient);   
-
-                            referral.setUpdatedAt(new Date());
-                            referralRepository.save(referral);
-                            
-                            hospital.setUpdatedAt(new Date()); 
-                            hospitalRepository.save(hospital);
-
-                            updatedCount++;
-                            foundMatch = true;
-                            break; 
-                        } catch (IllegalArgumentException e) {
-                            log.warn("Referral update for patient name '{}' (Guardian: {}) rejected: Invalid status string '{}' provided in request.", request.getReferrals(), request.getGuardianContact(), request.getStatus(), e);
-                            rejectedList.add(new RejectedReferralInfo(request.getReferrals(), request.getGuardianContact(), request.getGender(), request.getHospitalName()));
-                            rejectedCount++;
-                            foundMatch = true; 
-                            break; 
-                        }
-                }
-            }
-
-            if (!foundMatch) {
+            Gender patientGender;
+            try {
+                patientGender = Gender.valueOf(request.getGender().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid gender string: {}. Rejecting referral for contact: {}", request.getGender(), request.getGuardianContact(), e);
                 rejectedList.add(new RejectedReferralInfo(request.getReferrals(), request.getGuardianContact(), request.getGender(), request.getHospitalName()));
                 rejectedCount++;
+                continue;
+            }
+
+            String ageString = request.getAge() != null ? String.valueOf(request.getAge()) : null;
+            Optional<Patient> patientOpt = patientRepository.findByAgeAndPhoneAndGender(ageString, request.getGuardianContact(), patientGender);
+            if (!patientOpt.isPresent()) {
+                log.warn("Patient not found for age: {}, phone: {}, gender: {}. Rejecting referral.", ageString, request.getGuardianContact(), patientGender);
+                rejectedList.add(new RejectedReferralInfo(request.getReferrals(), request.getGuardianContact(), request.getGender(), request.getHospitalName()));
+                rejectedCount++;
+                continue;
+            }
+            Patient patient = patientOpt.get();
+
+            Optional<Referral> referralOpt = referralRepository.findByPatientIdAndHospitalId(patient.getId(), hospital.getId());
+            if (!referralOpt.isPresent()) {
+                log.warn("Referral not found for patient ID: {} and hospital ID: {}. Rejecting referral.", patient.getId(), hospital.getId());
+                rejectedList.add(new RejectedReferralInfo(request.getReferrals(), request.getGuardianContact(), request.getGender(), request.getHospitalName()));
+                rejectedCount++;
+                continue;
+            }
+            Referral referral = referralOpt.get();
+
+            // Status Handling Logic
+            if (request.getStatus() == null || request.getStatus().trim().isEmpty()) {
+                // Update other referral details
+                referral.setRightEye(mapEyeDetailsDtoToEntity(request.getRightEye()));
+                referral.setLeftEye(mapEyeDetailsDtoToEntity(request.getLeftEye()));
+                referral.setSpectacleRequestedOn(request.getRequestedOn());
+                referral.setIsSpectacleRequested(true); // Or based on presence of eye details/requestedOn
+
+                patient.setUpdatedAt(new Date());
+                patientRepository.save(patient);
+
+                referral.setUpdatedAt(new Date());
+                referralRepository.save(referral);
+
+                // hospital.setUpdatedAt(new Date()); // Consider if this is always needed
+                // hospitalRepository.save(hospital); // Consider if this is always needed
+                updatedCount++;
+            } else {
+                String newStatusString = request.getStatus().toUpperCase();
+                try {
+                    Status newReferralStatus = Status.valueOf(newStatusString); // Validate status enum
+                    
+                    patient.setStatus(newStatusString); // Patient status is String
+                    referral.setStatus(newReferralStatus);
+
+                    // Update other referral details
+                    referral.setRightEye(mapEyeDetailsDtoToEntity(request.getRightEye()));
+                    referral.setLeftEye(mapEyeDetailsDtoToEntity(request.getLeftEye()));
+                    referral.setSpectacleRequestedOn(request.getRequestedOn());
+                    referral.setIsSpectacleRequested(true); // Or based on presence of eye details/requestedOn
+
+                    patient.setUpdatedAt(new Date());
+                    patientRepository.save(patient);
+
+                    referral.setUpdatedAt(new Date());
+                    referralRepository.save(referral);
+
+                    hospital.setUpdatedAt(new Date()); 
+                    hospitalRepository.save(hospital); 
+                    
+                    updatedCount++;
+                } catch (IllegalArgumentException e) {
+                    log.warn("Invalid status string: {} for patient ID: {}, hospital ID: {}. Rejecting update.", request.getStatus(), patient.getId(), hospital.getId(), e);
+                    rejectedList.add(new RejectedReferralInfo(request.getReferrals(), request.getGuardianContact(), request.getGender(), request.getHospitalName()));
+                    rejectedCount++;
+                    continue; // Continue to the next request in the bulk list
+                }
             }
         }
         return new BulkReferralUpdateResponse(bulkRequest.size(), updatedCount, rejectedCount, rejectedList);

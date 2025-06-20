@@ -16,6 +16,7 @@ public class VisionAmbassadorResponse {
     private String id;
     private String name;
     private String phoneNumber;
+    private String userId;
     private boolean status;
     private String city;
     private String state;
