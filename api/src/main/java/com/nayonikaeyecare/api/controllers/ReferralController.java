@@ -18,7 +18,7 @@ import com.nayonikaeyecare.api.services.ReferralService;
 
 import lombok.RequiredArgsConstructor;
 
-@CrossOrigin(origins = {"http://localhost:3000","http://nayonika-user-management-dev-1511095685.ap-south-1.elb.amazonaws.com","http://nayonika-user-management-qa-580028363.ap-south-1.elb.amazonaws.com"})
+@CrossOrigin(origins = {"http://localhost:3000","http://nayonika-user-management-dev-1511095685.ap-south-1.elb.amazonaws.com","http://nayonika-user-management-qa-580028363.ap-south-1.elb.amazonaws.com","http://nayonika-user-management-stg-1382154925.ap-south-1.elb.amazonaws.com"})
 @RestController
 @RequestMapping("/api/referrals")
 @RequiredArgsConstructor
@@ -61,11 +61,11 @@ public class ReferralController {
     }
 
     @GetMapping("/hospital/{id}/paginated")
-public ResponseEntity<Page<ReferralResponse>> getReferralsByHospitalIdPaginated(
-        @PathVariable String id,
-        Pageable pageable) {
-    return ResponseEntity.ok(referralService.getReferralsByHospitalIdPaginated(id, pageable));
-}
+    public ResponseEntity<Page<ReferralResponse>> getReferralsByHospitalIdPaginated(
+            @PathVariable String id,
+            Pageable pageable) {
+        return ResponseEntity.ok(referralService.getReferralsByHospitalIdPaginated(id, pageable));
+    }
 
     @GetMapping("/patient/{id}")
     public ResponseEntity<List<ReferralResponse>> getReferralsByPatientId(@PathVariable String id) {
@@ -78,9 +78,11 @@ public ResponseEntity<Page<ReferralResponse>> getReferralsByHospitalIdPaginated(
             @RequestParam(required = false) String state,
             @RequestParam(required = false) String city,
             @RequestParam(required = false) Boolean status,
-            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String name, // Keep for backward compatibility
+            @RequestParam(required = false) String searchString, // Add this for your frontend
             Pageable pageable) {
-        return ResponseEntity.ok(referralService.filterReferrals(ambassadorId, state, city, status, name, pageable));
+        return ResponseEntity.ok(referralService.filterReferrals(
+                ambassadorId, state, city, status, name, searchString, pageable));
     }
 
     @DeleteMapping("/{id}")
@@ -108,10 +110,12 @@ public ResponseEntity<Page<ReferralResponse>> getReferralsByHospitalIdPaginated(
     }
 
     @PostMapping("/bulk-update")
-    public ResponseEntity<BulkReferralUpdateResponse> bulkUpdateReferrals(@Valid @RequestBody List<BulkReferralUpdateRequest> bulkRequest) {
+    public ResponseEntity<BulkReferralUpdateResponse> bulkUpdateReferrals(
+            @Valid @RequestBody List<BulkReferralUpdateRequest> bulkRequest) {
         BulkReferralUpdateResponse response = referralService.bulkUpdateReferrals(bulkRequest);
         return ResponseEntity.ok(response);
     }
+
     /**
      * Utility method to safely convert String to ObjectId.
      */
@@ -123,6 +127,3 @@ public ResponseEntity<Page<ReferralResponse>> getReferralsByHospitalIdPaginated(
         }
     }
 }
-
-
-

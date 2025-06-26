@@ -6,19 +6,24 @@ import com.nayonikaeyecare.api.dto.user.AuthenticationRequest;
 import com.nayonikaeyecare.api.dto.user.AuthenticationResponse;
 import com.nayonikaeyecare.api.dto.visionambassador.VisionAmbassadorRequest;
 import com.nayonikaeyecare.api.dto.visionambassador.VisionAmbassadorResponse;
+import com.nayonikaeyecare.api.dto.user.UserSummaryDto;
 import com.nayonikaeyecare.api.entities.VisionAmbassador;
 import com.nayonikaeyecare.api.entities.user.User;
 import com.nayonikaeyecare.api.exceptions.ResourceMissingException;
+import com.nayonikaeyecare.api.mappers.VisionAmbassadorMapper;
 import com.nayonikaeyecare.api.repositories.referral.ReferralRepository;
+import com.nayonikaeyecare.api.repositories.user.UserRepository;
 import com.nayonikaeyecare.api.repositories.visionambassador.VisionAmbassadorRepository;
 
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.Date;
-
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +36,7 @@ public class VisionAmbassadorService {
     private final VisionAmbassadorRepository visionAmbassadorRepository;
     private final UserService userService;
     private final ReferralRepository referralRepository;
+    private final UserRepository userRepository;
 
     public void createVisionAmbassador(VisionAmbassadorRequest visionAmbassadorRequest) {
         // Here you would typically save the Vision Ambassador to the database
@@ -108,9 +114,35 @@ public class VisionAmbassadorService {
         visionAmbassadorRepository.deleteById(new ObjectId(id));
     }
 
-    public Page<VisionAmbassadorResponse> filterVisionAmbassador(String searchString,
-            Pageable pageable) {
-        return visionAmbassadorRepository.filterVisionAmbassador(searchString,pageable);
+    public Page<VisionAmbassadorResponse> filterVisionAmbassador(String searchString, Pageable pageable) {
+        Page<VisionAmbassador> visionAmbassadorsPage = visionAmbassadorRepository.filterVisionAmbassador(searchString, pageable);
+        List<VisionAmbassadorResponse> responseList = new ArrayList<>();
+
+        for (VisionAmbassador va : visionAmbassadorsPage.getContent()) {
+            User user = null;
+            if (va.getUserId() != null && !va.getUserId().trim().isEmpty()) {
+                try {
+                    ObjectId userObjectId = new ObjectId(va.getUserId());
+                    Optional<User> userOptional = userRepository.findById(userObjectId);
+                    if (userOptional.isPresent()) {
+                        user = userOptional.get();
+                    }
+                } catch (IllegalArgumentException e) {
+                    log.warn("Invalid ObjectId format for userId: {} in VisionAmbassador ID: {}", va.getUserId(), va.getId());
+                }
+            }
+            
+            int patientCount = 0;
+            if(va.getId() != null) {
+                patientCount = referralRepository.findByAmbassadorId(va.getId()).size();
+            }
+            
+            UserSummaryDto userSummaryDto = VisionAmbassadorMapper.toUserSummaryDto(user);
+            VisionAmbassadorResponse responseDto = VisionAmbassadorMapper.toVisionAmbassadorResponse(va, userSummaryDto, patientCount);
+            responseList.add(responseDto);
+        }
+        
+        return new PageImpl<>(responseList, pageable, visionAmbassadorsPage.getTotalElements());
     }
 
     public VisionAmbassador findByUserId(String userId) {
@@ -136,5 +168,4 @@ public class VisionAmbassadorService {
         return response;
     }
 
-}
- 
+} 

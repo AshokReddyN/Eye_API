@@ -1,6 +1,7 @@
 package com.nayonikaeyecare.api.services;
 
 import org.bson.types.ObjectId;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -33,7 +34,7 @@ import com.nayonikaeyecare.api.entities.user.User; // Added
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest; // Added
-import org.springframework.data.domain.Sort;       // Added
+import org.springframework.data.domain.Sort; // Added
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import java.util.List;
@@ -44,6 +45,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j; // Added
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 
 @Service
@@ -62,17 +64,17 @@ public class ReferralService {
 
     @Transactional
     public ReferralResponse createReferral(ReferralRequest referralRequest) {
-  
-          // Update patient's referralIds
+
+        // Update patient's referralIds
         Patient patient = patientRepository.findById(new ObjectId(referralRequest.patientId()))
-            .orElseThrow(() -> new IllegalArgumentException("Patient not found"));
-        
+                .orElseThrow(() -> new IllegalArgumentException("Patient not found"));
+
         Referral referral = referralMapper.toEntity(referralRequest);
         referral.setCreatedAt(new Date());
         referral.setUpdatedAt(new Date());
         referral.setStatus(Status.REFERRED); // Set initial status to INPROGRESS
         Referral savedReferral = referralRepository.save(referral);
-        
+
         // Add new referral ID to the list
         if (patient.getReferralIds() == null) {
             patient.setReferralIds(new ArrayList<>());
@@ -87,22 +89,27 @@ public class ReferralService {
         patientRepository.save(patient);
         User user = null;
         if (savedReferral.getAmbassadorId() != null) {
-            log.info("Referral ID: {}, Original VisionAmbassador ID (ObjectId): {}", savedReferral.getId(), savedReferral.getAmbassadorId());
-            VisionAmbassador visionAmbassador = visionAmbassadorRepository.findById(savedReferral.getAmbassadorId()).orElse(null);
+            log.info("Referral ID: {}, Original VisionAmbassador ID (ObjectId): {}", savedReferral.getId(),
+                    savedReferral.getAmbassadorId());
+            VisionAmbassador visionAmbassador = visionAmbassadorRepository.findById(savedReferral.getAmbassadorId())
+                    .orElse(null);
             if (visionAmbassador != null) {
-                log.info("Found VisionAmbassador: ID_DB={}, userId_string={}", visionAmbassador.getId(), visionAmbassador.getUserId());
+                log.info("Found VisionAmbassador: ID_DB={}, userId_string={}", visionAmbassador.getId(),
+                        visionAmbassador.getUserId());
                 if (visionAmbassador.getUserId() != null && !visionAmbassador.getUserId().trim().isEmpty()) {
                     try {
                         ObjectId userObjectId = new ObjectId(visionAmbassador.getUserId());
                         log.info("Attempting to find User with ObjectId: {}", userObjectId);
                         user = userRepository.findById(userObjectId).orElse(null);
                         if (user != null) {
-                            log.info("Found User: ID_DB={}, Name={}", user.getId(), user.getFirstName() + " " + user.getLastName());
+                            log.info("Found User: ID_DB={}, Name={}", user.getId(),
+                                    user.getFirstName() + " " + user.getLastName());
                         } else {
                             log.warn("User NOT FOUND for ObjectId: {}", userObjectId);
                         }
                     } catch (IllegalArgumentException e) {
-                        log.error("Invalid ObjectId format for userId_string: {} from VisionAmbassador ID: {}", visionAmbassador.getUserId(), visionAmbassador.getId(), e);
+                        log.error("Invalid ObjectId format for userId_string: {} from VisionAmbassador ID: {}",
+                                visionAmbassador.getUserId(), visionAmbassador.getId(), e);
                     }
                 } else {
                     log.warn("VisionAmbassador ID: {} has null or empty userId_string.", visionAmbassador.getId());
@@ -113,7 +120,7 @@ public class ReferralService {
         } else {
             log.info("Referral ID: {}, has null VisionAmbassadorId.", savedReferral.getId());
         }
-        return referralMapper.toResponse(savedReferral, user,null,null);
+        return referralMapper.toResponse(savedReferral, user, null, null);
     }
 
     public List<ReferralResponse> getAllReferrals() {
@@ -122,25 +129,33 @@ public class ReferralService {
                 .map(referral -> {
                     User user = null;
                     if (referral.getAmbassadorId() != null) {
-                        log.info("Referral ID: {}, Original VisionAmbassador ID (ObjectId): {}", referral.getId(), referral.getAmbassadorId());
-                        VisionAmbassador visionAmbassador = visionAmbassadorRepository.findById(referral.getAmbassadorId()).orElse(null);
+                        log.info("Referral ID: {}, Original VisionAmbassador ID (ObjectId): {}", referral.getId(),
+                                referral.getAmbassadorId());
+                        VisionAmbassador visionAmbassador = visionAmbassadorRepository
+                                .findById(referral.getAmbassadorId()).orElse(null);
                         if (visionAmbassador != null) {
-                            log.info("Found VisionAmbassador: ID_DB={}, userId_string={}", visionAmbassador.getId(), visionAmbassador.getUserId());
-                            if (visionAmbassador.getUserId() != null && !visionAmbassador.getUserId().trim().isEmpty()) {
+                            log.info("Found VisionAmbassador: ID_DB={}, userId_string={}", visionAmbassador.getId(),
+                                    visionAmbassador.getUserId());
+                            if (visionAmbassador.getUserId() != null
+                                    && !visionAmbassador.getUserId().trim().isEmpty()) {
                                 try {
                                     ObjectId userObjectId = new ObjectId(visionAmbassador.getUserId());
                                     log.info("Attempting to find User with ObjectId: {}", userObjectId);
                                     user = userRepository.findById(userObjectId).orElse(null);
                                     if (user != null) {
-                                        log.info("Found User: ID_DB={}, Name={}", user.getId(), user.getFirstName() + " " + user.getLastName());
+                                        log.info("Found User: ID_DB={}, Name={}", user.getId(),
+                                                user.getFirstName() + " " + user.getLastName());
                                     } else {
                                         log.warn("User NOT FOUND for ObjectId: {}", userObjectId);
                                     }
                                 } catch (IllegalArgumentException e) {
-                                    log.error("Invalid ObjectId format for userId_string: {} from VisionAmbassador ID: {}", visionAmbassador.getUserId(), visionAmbassador.getId(), e);
+                                    log.error(
+                                            "Invalid ObjectId format for userId_string: {} from VisionAmbassador ID: {}",
+                                            visionAmbassador.getUserId(), visionAmbassador.getId(), e);
                                 }
                             } else {
-                                log.warn("VisionAmbassador ID: {} has null or empty userId_string.", visionAmbassador.getId());
+                                log.warn("VisionAmbassador ID: {} has null or empty userId_string.",
+                                        visionAmbassador.getId());
                             }
                         } else {
                             log.warn("VisionAmbassador NOT FOUND for ID: {}", referral.getAmbassadorId());
@@ -148,7 +163,7 @@ public class ReferralService {
                     } else {
                         log.info("Referral ID: {}, has null VisionAmbassadorId.", referral.getId());
                     }
-                    return referralMapper.toResponse(referral, user,null,null);
+                    return referralMapper.toResponse(referral, user, null, null);
                 })
                 .collect(Collectors.toList());
     }
@@ -158,22 +173,27 @@ public class ReferralService {
                 .orElseThrow(() -> new IllegalArgumentException("Referral not found with id: " + id));
         User user = null;
         if (referral.getAmbassadorId() != null) {
-            log.info("Referral ID: {}, Original VisionAmbassador ID (ObjectId): {}", referral.getId(), referral.getAmbassadorId());
-            VisionAmbassador visionAmbassador = visionAmbassadorRepository.findById(referral.getAmbassadorId()).orElse(null);
+            log.info("Referral ID: {}, Original VisionAmbassador ID (ObjectId): {}", referral.getId(),
+                    referral.getAmbassadorId());
+            VisionAmbassador visionAmbassador = visionAmbassadorRepository.findById(referral.getAmbassadorId())
+                    .orElse(null);
             if (visionAmbassador != null) {
-                log.info("Found VisionAmbassador: ID_DB={}, userId_string={}", visionAmbassador.getId(), visionAmbassador.getUserId());
+                log.info("Found VisionAmbassador: ID_DB={}, userId_string={}", visionAmbassador.getId(),
+                        visionAmbassador.getUserId());
                 if (visionAmbassador.getUserId() != null && !visionAmbassador.getUserId().trim().isEmpty()) {
                     try {
                         ObjectId userObjectId = new ObjectId(visionAmbassador.getUserId());
                         log.info("Attempting to find User with ObjectId: {}", userObjectId);
                         user = userRepository.findById(userObjectId).orElse(null);
                         if (user != null) {
-                            log.info("Found User: ID_DB={}, Name={}", user.getId(), user.getFirstName() + " " + user.getLastName());
+                            log.info("Found User: ID_DB={}, Name={}", user.getId(),
+                                    user.getFirstName() + " " + user.getLastName());
                         } else {
                             log.warn("User NOT FOUND for ObjectId: {}", userObjectId);
                         }
                     } catch (IllegalArgumentException e) {
-                        log.error("Invalid ObjectId format for userId_string: {} from VisionAmbassador ID: {}", visionAmbassador.getUserId(), visionAmbassador.getId(), e);
+                        log.error("Invalid ObjectId format for userId_string: {} from VisionAmbassador ID: {}",
+                                visionAmbassador.getUserId(), visionAmbassador.getId(), e);
                     }
                 } else {
                     log.warn("VisionAmbassador ID: {} has null or empty userId_string.", visionAmbassador.getId());
@@ -184,52 +204,64 @@ public class ReferralService {
         } else {
             log.info("Referral ID: {}, has null VisionAmbassadorId.", referral.getId());
         }
-        return referralMapper.toResponse(referral, user,null,null);
+        return referralMapper.toResponse(referral, user, null, null);
     }
 
-    public List<ReferralResponse> getReferralsByAmbassadorId(String ambassadorIdString) { // Parameter is VisionAmbassador ID string
+    public List<ReferralResponse> getReferralsByAmbassadorId(String ambassadorIdString) { // Parameter is
+                                                                                          // VisionAmbassador ID string
         // First, find the VisionAmbassador by its own ID
-        VisionAmbassador visionAmbassador = visionAmbassadorRepository.findById(new ObjectId(ambassadorIdString)).orElse(null);
+        VisionAmbassador visionAmbassador = visionAmbassadorRepository.findById(new ObjectId(ambassadorIdString))
+                .orElse(null);
         User user = null;
         if (visionAmbassador != null) {
-            log.info("Processing getReferralsByAmbassadorId for VisionAmbassador ID: {}, UserID_string: {}", visionAmbassador.getId(), visionAmbassador.getUserId());
+            log.info("Processing getReferralsByAmbassadorId for VisionAmbassador ID: {}, UserID_string: {}",
+                    visionAmbassador.getId(), visionAmbassador.getUserId());
             if (visionAmbassador.getUserId() != null && !visionAmbassador.getUserId().trim().isEmpty()) {
                 try {
                     ObjectId userObjectId = new ObjectId(visionAmbassador.getUserId());
                     user = userRepository.findById(userObjectId).orElse(null);
                     if (user == null) {
-                        log.warn("User not found for VisionAmbassador ID: {}, UserID_string: {}", visionAmbassador.getId(), visionAmbassador.getUserId());
+                        log.warn("User not found for VisionAmbassador ID: {}, UserID_string: {}",
+                                visionAmbassador.getId(), visionAmbassador.getUserId());
                     }
                 } catch (IllegalArgumentException e) {
-                    log.error("Invalid ObjectId format for userId_string: {} from VisionAmbassador ID: {}", visionAmbassador.getUserId(), visionAmbassador.getId(), e);
+                    log.error("Invalid ObjectId format for userId_string: {} from VisionAmbassador ID: {}",
+                            visionAmbassador.getUserId(), visionAmbassador.getId(), e);
                 }
             } else {
-                 log.warn("VisionAmbassador ID: {} has null or empty userId_string.", visionAmbassador.getId());
+                log.warn("VisionAmbassador ID: {} has null or empty userId_string.", visionAmbassador.getId());
             }
         } else {
             log.warn("VisionAmbassador not found for input ID string: {}", ambassadorIdString);
             // If the VA itself isn't found, no referrals can be linked, or user fetched.
-            // Consider returning empty list if VA not found, as referrals are linked via VA.
+            // Consider returning empty list if VA not found, as referrals are linked via
+            // VA.
             // However, the original method finds referrals by VA ID directly.
-            // This logic needs to align with how referrals are queried if we want to pass the correct User.
-            // For now, this method will pass a potentially null User to all referrals found by VA ID.
+            // This logic needs to align with how referrals are queried if we want to pass
+            // the correct User.
+            // For now, this method will pass a potentially null User to all referrals found
+            // by VA ID.
         }
 
-        // The following fetches referrals by VA ID, then tries to map with the *single* user fetched above.
-        // This assumes all referrals for a given VA ID should be associated with that VA's linked User.
+        // The following fetches referrals by VA ID, then tries to map with the *single*
+        // user fetched above.
+        // This assumes all referrals for a given VA ID should be associated with that
+        // VA's linked User.
         final User finalUser = user; // User for all referrals mapped in this context
-        Sort sort = Sort.by(Sort.Direction.DESC, "updatedAt"); 
-    
+        Sort sort = Sort.by(Sort.Direction.DESC, "updatedAt");
+
         List<Referral> referrals = referralRepository.findByAmbassadorId(new ObjectId(ambassadorIdString), sort);
-    
+
         return referrals.stream()
                 .map(referral -> {
                     // Logging specific to this referral within the loop
                     if (referral.getAmbassadorId() == null) {
-                         log.info("Referral ID: {} (within getReferralsByAmbassadorId) has null VisionAmbassadorId, though query was by VA ID.", referral.getId());
+                        log.info(
+                                "Referral ID: {} (within getReferralsByAmbassadorId) has null VisionAmbassadorId, though query was by VA ID.",
+                                referral.getId());
                     }
                     // Pass the finalUser obtained from the ambassadorIdString parameter
-                    return referralMapper.toResponse(referral, finalUser,null,null);
+                    return referralMapper.toResponse(referral, finalUser, null, null);
                 })
                 .collect(Collectors.toList());
     }
@@ -242,25 +274,33 @@ public class ReferralService {
                 .map(referral -> {
                     User user = null;
                     if (referral.getAmbassadorId() != null) {
-                        log.info("Referral ID: {}, Original VisionAmbassador ID (ObjectId): {}", referral.getId(), referral.getAmbassadorId());
-                        VisionAmbassador visionAmbassador = visionAmbassadorRepository.findById(referral.getAmbassadorId()).orElse(null);
+                        log.info("Referral ID: {}, Original VisionAmbassador ID (ObjectId): {}", referral.getId(),
+                                referral.getAmbassadorId());
+                        VisionAmbassador visionAmbassador = visionAmbassadorRepository
+                                .findById(referral.getAmbassadorId()).orElse(null);
                         if (visionAmbassador != null) {
-                            log.info("Found VisionAmbassador: ID_DB={}, userId_string={}", visionAmbassador.getId(), visionAmbassador.getUserId());
-                            if (visionAmbassador.getUserId() != null && !visionAmbassador.getUserId().trim().isEmpty()) {
+                            log.info("Found VisionAmbassador: ID_DB={}, userId_string={}", visionAmbassador.getId(),
+                                    visionAmbassador.getUserId());
+                            if (visionAmbassador.getUserId() != null
+                                    && !visionAmbassador.getUserId().trim().isEmpty()) {
                                 try {
                                     ObjectId userObjectId = new ObjectId(visionAmbassador.getUserId());
                                     log.info("Attempting to find User with ObjectId: {}", userObjectId);
                                     user = userRepository.findById(userObjectId).orElse(null);
                                     if (user != null) {
-                                        log.info("Found User: ID_DB={}, Name={}", user.getId(), user.getFirstName() + " " + user.getLastName());
+                                        log.info("Found User: ID_DB={}, Name={}", user.getId(),
+                                                user.getFirstName() + " " + user.getLastName());
                                     } else {
                                         log.warn("User NOT FOUND for ObjectId: {}", userObjectId);
                                     }
                                 } catch (IllegalArgumentException e) {
-                                    log.error("Invalid ObjectId format for userId_string: {} from VisionAmbassador ID: {}", visionAmbassador.getUserId(), visionAmbassador.getId(), e);
+                                    log.error(
+                                            "Invalid ObjectId format for userId_string: {} from VisionAmbassador ID: {}",
+                                            visionAmbassador.getUserId(), visionAmbassador.getId(), e);
                                 }
                             } else {
-                                log.warn("VisionAmbassador ID: {} has null or empty userId_string.", visionAmbassador.getId());
+                                log.warn("VisionAmbassador ID: {} has null or empty userId_string.",
+                                        visionAmbassador.getId());
                             }
                         } else {
                             log.warn("VisionAmbassador NOT FOUND for ID: {}", referral.getAmbassadorId());
@@ -268,7 +308,7 @@ public class ReferralService {
                     } else {
                         log.info("Referral ID: {}, has null VisionAmbassadorId.", referral.getId());
                     }
-                    return referralMapper.toResponse(referral, user,null,null);
+                    return referralMapper.toResponse(referral, user, null, null);
                 })
                 .collect(Collectors.toList());
     }
@@ -278,25 +318,33 @@ public class ReferralService {
                 .map(referral -> {
                     User user = null;
                     if (referral.getAmbassadorId() != null) {
-                        log.info("Referral ID: {}, Original VisionAmbassador ID (ObjectId): {}", referral.getId(), referral.getAmbassadorId());
-                        VisionAmbassador visionAmbassador = visionAmbassadorRepository.findById(referral.getAmbassadorId()).orElse(null);
+                        log.info("Referral ID: {}, Original VisionAmbassador ID (ObjectId): {}", referral.getId(),
+                                referral.getAmbassadorId());
+                        VisionAmbassador visionAmbassador = visionAmbassadorRepository
+                                .findById(referral.getAmbassadorId()).orElse(null);
                         if (visionAmbassador != null) {
-                            log.info("Found VisionAmbassador: ID_DB={}, userId_string={}", visionAmbassador.getId(), visionAmbassador.getUserId());
-                            if (visionAmbassador.getUserId() != null && !visionAmbassador.getUserId().trim().isEmpty()) {
+                            log.info("Found VisionAmbassador: ID_DB={}, userId_string={}", visionAmbassador.getId(),
+                                    visionAmbassador.getUserId());
+                            if (visionAmbassador.getUserId() != null
+                                    && !visionAmbassador.getUserId().trim().isEmpty()) {
                                 try {
                                     ObjectId userObjectId = new ObjectId(visionAmbassador.getUserId());
                                     log.info("Attempting to find User with ObjectId: {}", userObjectId);
                                     user = userRepository.findById(userObjectId).orElse(null);
                                     if (user != null) {
-                                        log.info("Found User: ID_DB={}, Name={}", user.getId(), user.getFirstName() + " " + user.getLastName());
+                                        log.info("Found User: ID_DB={}, Name={}", user.getId(),
+                                                user.getFirstName() + " " + user.getLastName());
                                     } else {
                                         log.warn("User NOT FOUND for ObjectId: {}", userObjectId);
                                     }
                                 } catch (IllegalArgumentException e) {
-                                    log.error("Invalid ObjectId format for userId_string: {} from VisionAmbassador ID: {}", visionAmbassador.getUserId(), visionAmbassador.getId(), e);
+                                    log.error(
+                                            "Invalid ObjectId format for userId_string: {} from VisionAmbassador ID: {}",
+                                            visionAmbassador.getUserId(), visionAmbassador.getId(), e);
                                 }
                             } else {
-                                log.warn("VisionAmbassador ID: {} has null or empty userId_string.", visionAmbassador.getId());
+                                log.warn("VisionAmbassador ID: {} has null or empty userId_string.",
+                                        visionAmbassador.getId());
                             }
                         } else {
                             log.warn("VisionAmbassador NOT FOUND for ID: {}", referral.getAmbassadorId());
@@ -304,7 +352,7 @@ public class ReferralService {
                     } else {
                         log.info("Referral ID: {}, has null VisionAmbassadorId.", referral.getId());
                     }
-                    return referralMapper.toResponse(referral, user,null,null);
+                    return referralMapper.toResponse(referral, user, null, null);
                 });
     }
 
@@ -315,25 +363,33 @@ public class ReferralService {
                     User user = null;
                     Hospital hospital = null;
                     if (referral.getAmbassadorId() != null) {
-                        log.info("Referral ID: {}, Original VisionAmbassador ID (ObjectId): {}", referral.getId(), referral.getAmbassadorId());
-                        VisionAmbassador visionAmbassador = visionAmbassadorRepository.findById(referral.getAmbassadorId()).orElse(null);
+                        log.info("Referral ID: {}, Original VisionAmbassador ID (ObjectId): {}", referral.getId(),
+                                referral.getAmbassadorId());
+                        VisionAmbassador visionAmbassador = visionAmbassadorRepository
+                                .findById(referral.getAmbassadorId()).orElse(null);
                         if (visionAmbassador != null) {
-                            log.info("Found VisionAmbassador: ID_DB={}, userId_string={}", visionAmbassador.getId(), visionAmbassador.getUserId());
-                            if (visionAmbassador.getUserId() != null && !visionAmbassador.getUserId().trim().isEmpty()) {
+                            log.info("Found VisionAmbassador: ID_DB={}, userId_string={}", visionAmbassador.getId(),
+                                    visionAmbassador.getUserId());
+                            if (visionAmbassador.getUserId() != null
+                                    && !visionAmbassador.getUserId().trim().isEmpty()) {
                                 try {
                                     ObjectId userObjectId = new ObjectId(visionAmbassador.getUserId());
                                     log.info("Attempting to find User with ObjectId: {}", userObjectId);
                                     user = userRepository.findById(userObjectId).orElse(null);
                                     if (user != null) {
-                                        log.info("Found User: ID_DB={}, Name={}", user.getId(), user.getFirstName() + " " + user.getLastName());
+                                        log.info("Found User: ID_DB={}, Name={}", user.getId(),
+                                                user.getFirstName() + " " + user.getLastName());
                                     } else {
                                         log.warn("User NOT FOUND for ObjectId: {}", userObjectId);
                                     }
                                 } catch (IllegalArgumentException e) {
-                                    log.error("Invalid ObjectId format for userId_string: {} from VisionAmbassador ID: {}", visionAmbassador.getUserId(), visionAmbassador.getId(), e);
+                                    log.error(
+                                            "Invalid ObjectId format for userId_string: {} from VisionAmbassador ID: {}",
+                                            visionAmbassador.getUserId(), visionAmbassador.getId(), e);
                                 }
                             } else {
-                                log.warn("VisionAmbassador ID: {} has null or empty userId_string.", visionAmbassador.getId());
+                                log.warn("VisionAmbassador ID: {} has null or empty userId_string.",
+                                        visionAmbassador.getId());
                             }
                         } else {
                             log.warn("VisionAmbassador NOT FOUND for ID: {}", referral.getAmbassadorId());
@@ -343,113 +399,92 @@ public class ReferralService {
                     }
 
                     if (referral.getHospitalId() != null) {
-                        log.info("Referral ID: {}, Original Hospital ID (ObjectId): {}", referral.getId(), referral.getHospitalId());
+                        log.info("Referral ID: {}, Original Hospital ID (ObjectId): {}", referral.getId(),
+                                referral.getHospitalId());
                         hospital = hospitalRepository.findById(referral.getHospitalId()).orElse(null);
                         if (hospital != null) {
                             log.info("Found hospital:", hospital.getId());
-                           
+
                         } else {
                             log.warn("Hospital NOT FOUND for ID: {}", referral.getHospitalId());
                         }
                     } else {
                         log.info("Referral ID: {}, has null HospitalId.", referral.getId());
                     }
-                    return referralMapper.toResponse(referral, user,hospital,null);
+                    return referralMapper.toResponse(referral, user, hospital, null);
                 })
                 .collect(Collectors.toList());
     }
 
-    public Page<ReferralResponse> filterReferrals(ObjectId ambassadorId, String state, String city, Boolean status, 
-        String name, Pageable pageable) {
-    
-    // Create criteria based on non-null parameters
-    Criteria criteria = new Criteria();
+    public Page<ReferralResponse> filterReferrals(ObjectId ambassadorId, String state, String city,
+            Boolean status, String name, String searchString, Pageable pageable) {
 
-    if (ambassadorId != null && !ambassadorId.toHexString().isEmpty()) {
-        criteria = criteria.and("ambassadorId").is(ambassadorId);
-    }
-    
-    if (state != null && !state.isEmpty()) {
-        criteria = criteria.and("state").is(state);
-    }
-    
-    if (city != null && !city.isEmpty()) {
-        criteria = criteria.and("city").is(city);
-    }
-    
-    if (status != null) {
-        criteria = criteria.and("status").is(status);
-    }
-    
-    if (name != null && !name.isEmpty()) {
-        // Case-insensitive partial name match
-        criteria = criteria.and("patientName").regex(name, "i");
-    }
-    
-    // Default sorting logic
-    Pageable effectivePageable = pageable;
-    if (pageable.getSort().isUnsorted()) {
-        effectivePageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.DESC, "createdAt"));
-    }
-    // Use effectivePageable for the query
-    Query query = Query.query(criteria).with(effectivePageable); 
-    
-    // Get total count for pagination
-    long total = mongoTemplate.count(Query.query(criteria), Referral.class);
-    
-    // Execute query with pagination
-    List<Referral> referrals = mongoTemplate.find(query, Referral.class);
-    
-    // Convert to response DTOs
-    List<ReferralResponse> referralResponses = referrals.stream()
-        .map(referral -> {
-            User user = null;
-            Patient patient = null; // Initialize patient to null
-            if (referral.getAmbassadorId() != null) {
-                log.info("Referral ID: {}, Original VisionAmbassador ID (ObjectId): {}", referral.getId(), referral.getAmbassadorId());
-                VisionAmbassador visionAmbassador = visionAmbassadorRepository.findById(referral.getAmbassadorId()).orElse(null);
-                if (visionAmbassador != null) {
-                    log.info("Found VisionAmbassador: ID_DB={}, userId_string={}", visionAmbassador.getId(), visionAmbassador.getUserId());
-                    if (visionAmbassador.getUserId() != null && !visionAmbassador.getUserId().trim().isEmpty()) {
-                        try {
-                            ObjectId userObjectId = new ObjectId(visionAmbassador.getUserId());
-                            log.info("Attempting to find User with ObjectId: {}", userObjectId);
-                            user = userRepository.findById(userObjectId).orElse(null);
-                            if (user != null) {
-                                log.info("Found User: ID_DB={}, Name={}", user.getId(), user.getFirstName() + " " + user.getLastName());
+        // Delegate to repository implementation
+        Page<Referral> referralPage = referralRepository.filterReferrals(
+                ambassadorId, state, city, status, name, searchString, pageable);
+
+        // Convert to response DTOs
+        List<ReferralResponse> referralResponses = referralPage.getContent().stream()
+                .map(referral -> {
+                    User user = null;
+                    Patient patient = null;
+
+                    // Your existing mapping logic here...
+                    if (referral.getAmbassadorId() != null) {
+                        log.info("Referral ID: {}, Original VisionAmbassador ID (ObjectId): {}", referral.getId(),
+                                referral.getAmbassadorId());
+                        VisionAmbassador visionAmbassador = visionAmbassadorRepository
+                                .findById(referral.getAmbassadorId()).orElse(null);
+                        if (visionAmbassador != null) {
+                            log.info("Found VisionAmbassador: ID_DB={}, userId_string={}", visionAmbassador.getId(),
+                                    visionAmbassador.getUserId());
+                            if (visionAmbassador.getUserId() != null
+                                    && !visionAmbassador.getUserId().trim().isEmpty()) {
+                                try {
+                                    ObjectId userObjectId = new ObjectId(visionAmbassador.getUserId());
+                                    log.info("Attempting to find User with ObjectId: {}", userObjectId);
+                                    user = userRepository.findById(userObjectId).orElse(null);
+                                    if (user != null) {
+                                        log.info("Found User: ID_DB={}, Name={}", user.getId(),
+                                                user.getFirstName() + " " + user.getLastName());
+                                    } else {
+                                        log.warn("User NOT FOUND for ObjectId: {}", userObjectId);
+                                    }
+                                } catch (IllegalArgumentException e) {
+                                    log.error(
+                                            "Invalid ObjectId format for userId_string: {} from VisionAmbassador ID: {}",
+                                            visionAmbassador.getUserId(), visionAmbassador.getId(), e);
+                                }
                             } else {
-                                log.warn("User NOT FOUND for ObjectId: {}", userObjectId);
+                                log.warn("VisionAmbassador ID: {} has null or empty userId_string.",
+                                        visionAmbassador.getId());
                             }
-                        } catch (IllegalArgumentException e) {
-                            log.error("Invalid ObjectId format for userId_string: {} from VisionAmbassador ID: {}", visionAmbassador.getUserId(), visionAmbassador.getId(), e);
+                        } else {
+                            log.warn("VisionAmbassador NOT FOUND for ID: {}", referral.getAmbassadorId());
                         }
                     } else {
-                        log.warn("VisionAmbassador ID: {} has null or empty userId_string.", visionAmbassador.getId());
+                        log.info("Referral ID: {}, has null VisionAmbassadorId.", referral.getId());
                     }
-                } else {
-                    log.warn("VisionAmbassador NOT FOUND for ID: {}", referral.getAmbassadorId());
-                }
-            } else {
-                log.info("Referral ID: {}, has null VisionAmbassadorId.", referral.getId());
-            }
 
-            if (referral.getPatientId() != null) {
-                log.info("Referral ID: {}, Original Patient ID (ObjectId): {}", referral.getId(), referral.getPatientId());
-                patient = patientRepository.findById(referral.getPatientId()).orElse(null);
-                if (patient != null) {
-                    log.info("Found Patient: ID_DB={}, patientId_string={}", patient.getId(), patient.getId());
-                } else {
-                    log.warn("Patient NOT FOUND for ID: {}", referral.getAmbassadorId());
-                }
-            } else {
-                log.info("Referral ID: {}, has null PatientId.", referral.getId());
-            }
-            return referralMapper.toResponse(referral, user,null,patient);
-        })
-        .collect(Collectors.toList());
-    
-    return new PageImpl<>(referralResponses, effectivePageable, total);
-}
+                    if (referral.getPatientId() != null) {
+                        log.info("Referral ID: {}, Original Patient ID (ObjectId): {}", referral.getId(),
+                                referral.getPatientId());
+                        patient = patientRepository.findById(referral.getPatientId()).orElse(null);
+                        if (patient != null) {
+                            log.info("Found Patient: ID_DB={}, patientId_string={}", patient.getId(), patient.getId());
+                        } else {
+                            log.warn("Patient NOT FOUND for ID: {}", referral.getPatientId());
+                        }
+                    } else {
+                        log.info("Referral ID: {}, has null PatientId.", referral.getId());
+                    }
+
+                    return referralMapper.toResponse(referral, user, null, patient);
+                })
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(referralResponses, referralPage.getPageable(), referralPage.getTotalElements());
+    }
 
     public void deleteReferralById(String id) {
         referralRepository.deleteById(new ObjectId(id));
@@ -463,22 +498,27 @@ public class ReferralService {
         Referral savedReferral = referralRepository.save(updatedReferral);
         User user = null;
         if (savedReferral.getAmbassadorId() != null) {
-            log.info("Referral ID: {}, Original VisionAmbassador ID (ObjectId): {}", savedReferral.getId(), savedReferral.getAmbassadorId());
-            VisionAmbassador visionAmbassador = visionAmbassadorRepository.findById(savedReferral.getAmbassadorId()).orElse(null);
+            log.info("Referral ID: {}, Original VisionAmbassador ID (ObjectId): {}", savedReferral.getId(),
+                    savedReferral.getAmbassadorId());
+            VisionAmbassador visionAmbassador = visionAmbassadorRepository.findById(savedReferral.getAmbassadorId())
+                    .orElse(null);
             if (visionAmbassador != null) {
-                log.info("Found VisionAmbassador: ID_DB={}, userId_string={}", visionAmbassador.getId(), visionAmbassador.getUserId());
+                log.info("Found VisionAmbassador: ID_DB={}, userId_string={}", visionAmbassador.getId(),
+                        visionAmbassador.getUserId());
                 if (visionAmbassador.getUserId() != null && !visionAmbassador.getUserId().trim().isEmpty()) {
                     try {
                         ObjectId userObjectId = new ObjectId(visionAmbassador.getUserId());
                         log.info("Attempting to find User with ObjectId: {}", userObjectId);
                         user = userRepository.findById(userObjectId).orElse(null);
                         if (user != null) {
-                            log.info("Found User: ID_DB={}, Name={}", user.getId(), user.getFirstName() + " " + user.getLastName());
+                            log.info("Found User: ID_DB={}, Name={}", user.getId(),
+                                    user.getFirstName() + " " + user.getLastName());
                         } else {
                             log.warn("User NOT FOUND for ObjectId: {}", userObjectId);
                         }
                     } catch (IllegalArgumentException e) {
-                        log.error("Invalid ObjectId format for userId_string: {} from VisionAmbassador ID: {}", visionAmbassador.getUserId(), visionAmbassador.getId(), e);
+                        log.error("Invalid ObjectId format for userId_string: {} from VisionAmbassador ID: {}",
+                                visionAmbassador.getUserId(), visionAmbassador.getId(), e);
                     }
                 } else {
                     log.warn("VisionAmbassador ID: {} has null or empty userId_string.", visionAmbassador.getId());
@@ -489,18 +529,18 @@ public class ReferralService {
         } else {
             log.info("Referral ID: {}, has null VisionAmbassadorId.", savedReferral.getId());
         }
-        return referralMapper.toResponse(savedReferral, user,null,null);
+        return referralMapper.toResponse(savedReferral, user, null, null);
     }
 
-     private EyeDetails mapEyeDetailsDtoToEntity(EyeDetailsDto dto) {
+    private EyeDetails mapEyeDetailsDtoToEntity(EyeDetailsDto dto) {
         if (dto == null) {
             return null;
         }
         return EyeDetails.builder()
-            .sph(dto.getSph() != null ? String.valueOf(dto.getSph()) : null)
-            .cyl(dto.getCyl() != null ? String.valueOf(dto.getCyl()) : null)
-            .axis(dto.getAxis() != null ? String.valueOf(dto.getAxis()) : null)
-            .build();
+                .sph(dto.getSph() != null ? String.valueOf(dto.getSph()) : null)
+                .cyl(dto.getCyl() != null ? String.valueOf(dto.getCyl()) : null)
+                .axis(dto.getAxis() != null ? String.valueOf(dto.getAxis()) : null)
+                .build();
     }
 
     public BulkReferralUpdateResponse bulkUpdateReferrals(List<BulkReferralUpdateRequest> bulkRequest) {
@@ -511,8 +551,10 @@ public class ReferralService {
         for (BulkReferralUpdateRequest request : bulkRequest) {
             Optional<Hospital> hospitalOpt = hospitalRepository.findByHospitalCode(request.getHospitalCode());
             if (!hospitalOpt.isPresent()) {
-                log.warn("Hospital not found for code: {}. Rejecting referral for contact: {}", request.getHospitalCode(), request.getGuardianContact());
-                rejectedList.add(new RejectedReferralInfo(request.getReferrals(), request.getGuardianContact(), request.getGender(), request.getHospitalName()));
+                log.warn("Hospital not found for code: {}. Rejecting referral for contact: {}",
+                        request.getHospitalCode(), request.getGuardianContact());
+                rejectedList.add(new RejectedReferralInfo(request.getReferrals(), request.getGuardianContact(),
+                        request.getGender(), request.getHospitalName()));
                 rejectedCount++;
                 continue;
             }
@@ -522,26 +564,34 @@ public class ReferralService {
             try {
                 patientGender = Gender.valueOf(request.getGender().toUpperCase());
             } catch (IllegalArgumentException e) {
-                log.warn("Invalid gender string: {}. Rejecting referral for contact: {}", request.getGender(), request.getGuardianContact(), e);
-                rejectedList.add(new RejectedReferralInfo(request.getReferrals(), request.getGuardianContact(), request.getGender(), request.getHospitalName()));
+                log.warn("Invalid gender string: {}. Rejecting referral for contact: {}", request.getGender(),
+                        request.getGuardianContact(), e);
+                rejectedList.add(new RejectedReferralInfo(request.getReferrals(), request.getGuardianContact(),
+                        request.getGender(), request.getHospitalName()));
                 rejectedCount++;
                 continue;
             }
 
             String ageString = request.getAge() != null ? String.valueOf(request.getAge()) : null;
-            Optional<Patient> patientOpt = patientRepository.findByAgeAndPhoneAndGender(ageString, request.getGuardianContact(), patientGender);
+            Optional<Patient> patientOpt = patientRepository.findByAgeAndPhoneAndGender(ageString,
+                    request.getGuardianContact(), patientGender);
             if (!patientOpt.isPresent()) {
-                log.warn("Patient not found for age: {}, phone: {}, gender: {}. Rejecting referral.", ageString, request.getGuardianContact(), patientGender);
-                rejectedList.add(new RejectedReferralInfo(request.getReferrals(), request.getGuardianContact(), request.getGender(), request.getHospitalName()));
+                log.warn("Patient not found for age: {}, phone: {}, gender: {}. Rejecting referral.", ageString,
+                        request.getGuardianContact(), patientGender);
+                rejectedList.add(new RejectedReferralInfo(request.getReferrals(), request.getGuardianContact(),
+                        request.getGender(), request.getHospitalName()));
                 rejectedCount++;
                 continue;
             }
             Patient patient = patientOpt.get();
 
-            Optional<Referral> referralOpt = referralRepository.findByPatientIdAndHospitalId(patient.getId(), hospital.getId());
+            Optional<Referral> referralOpt = referralRepository.findByPatientIdAndHospitalId(patient.getId(),
+                    hospital.getId());
             if (!referralOpt.isPresent()) {
-                log.warn("Referral not found for patient ID: {} and hospital ID: {}. Rejecting referral.", patient.getId(), hospital.getId());
-                rejectedList.add(new RejectedReferralInfo(request.getReferrals(), request.getGuardianContact(), request.getGender(), request.getHospitalName()));
+                log.warn("Referral not found for patient ID: {} and hospital ID: {}. Rejecting referral.",
+                        patient.getId(), hospital.getId());
+                rejectedList.add(new RejectedReferralInfo(request.getReferrals(), request.getGuardianContact(),
+                        request.getGender(), request.getHospitalName()));
                 rejectedCount++;
                 continue;
             }
@@ -568,7 +618,7 @@ public class ReferralService {
                 String newStatusString = request.getStatus().toUpperCase();
                 try {
                     Status newReferralStatus = Status.valueOf(newStatusString); // Validate status enum
-                    
+
                     patient.setStatus(newStatusString); // Patient status is String
                     referral.setStatus(newReferralStatus);
 
@@ -584,13 +634,15 @@ public class ReferralService {
                     referral.setUpdatedAt(new Date());
                     referralRepository.save(referral);
 
-                    hospital.setUpdatedAt(new Date()); 
-                    hospitalRepository.save(hospital); 
-                    
+                    hospital.setUpdatedAt(new Date());
+                    hospitalRepository.save(hospital);
+
                     updatedCount++;
                 } catch (IllegalArgumentException e) {
-                    log.warn("Invalid status string: {} for patient ID: {}, hospital ID: {}. Rejecting update.", request.getStatus(), patient.getId(), hospital.getId(), e);
-                    rejectedList.add(new RejectedReferralInfo(request.getReferrals(), request.getGuardianContact(), request.getGender(), request.getHospitalName()));
+                    log.warn("Invalid status string: {} for patient ID: {}, hospital ID: {}. Rejecting update.",
+                            request.getStatus(), patient.getId(), hospital.getId(), e);
+                    rejectedList.add(new RejectedReferralInfo(request.getReferrals(), request.getGuardianContact(),
+                            request.getGender(), request.getHospitalName()));
                     rejectedCount++;
                     continue; // Continue to the next request in the bulk list
                 }

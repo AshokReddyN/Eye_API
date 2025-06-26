@@ -1,5 +1,5 @@
 package com.nayonikaeyecare.api.services;
-
+ 
 import com.nayonikaeyecare.api.dto.referral.ReferralResponse;
 import com.nayonikaeyecare.api.entities.Referral;
 import com.nayonikaeyecare.api.entities.VisionAmbassador;
@@ -28,19 +28,19 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
-
+ 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors; // Added
-
+ 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-
+ 
 import com.nayonikaeyecare.api.dto.referral.BulkReferralUpdateRequest;
 import com.nayonikaeyecare.api.dto.referral.BulkReferralUpdateResponse;
 import com.nayonikaeyecare.api.dto.referral.ReferralRequest;
@@ -50,11 +50,11 @@ import com.nayonikaeyecare.api.entities.Hospital;
 import com.nayonikaeyecare.api.entities.Patient;
 import com.nayonikaeyecare.api.entities.Status;
 import java.util.ArrayList;
-
-
+ 
+ 
 @ExtendWith(MockitoExtension.class)
 public class ReferralServiceTest {
-
+ 
     @Mock
     private ReferralRepository referralRepository; // Not directly used by filterReferrals, but good to have for other tests
     @Mock
@@ -67,7 +67,7 @@ public class ReferralServiceTest {
     private UserRepository userRepository; // Added
     @Mock
     private MongoTemplate mongoTemplate;
-
+ 
     // Use @Spy for the mapper if we want to test its actual mapping logic
     // For now, @Mock is fine if we define what toResponse returns.
     // However, since the service calls toResponse(referral, ambassador),
@@ -75,10 +75,10 @@ public class ReferralServiceTest {
     // mocking the mapper is simpler.
     @Mock
     private ReferralMapper referralMapper;
-
+ 
     @InjectMocks
     private ReferralService referralService;
-
+ 
     @Captor
     private ArgumentCaptor<Query> queryCaptor;
     @Captor
@@ -87,8 +87,8 @@ public class ReferralServiceTest {
     private ArgumentCaptor<Patient> patientCaptor;
     @Captor
     private ArgumentCaptor<Referral> referralCaptor;
-
-
+ 
+ 
     private Referral referral1, referral2, referralWithNullAmbassadorId, referralToVAWithInvalidUserId, referralToVAWithNoUserLink, referralToVANotFound;
     private VisionAmbassador ambassador1WithUser, ambassador2WithUser, ambassadorWithInvalidUserId, ambassadorWithNoUserLink;
     private User user1, user2;
@@ -102,47 +102,47 @@ public class ReferralServiceTest {
     private ObjectId testHospitalId;
     private ObjectId testPatientId;
     private ObjectId testReferralId;
-
-
+ 
+ 
     @BeforeEach
     void setUp() {
         // Existing setup
         user1IdString = new ObjectId().toHexString();
         user2IdString = new ObjectId().toHexString();
         userNonExistentIdString = new ObjectId().toHexString(); // For VA that links to a non-existent user
-
+ 
         user1 = User.builder().id(new ObjectId(user1IdString)).firstName("User").lastName("One").phoneNumber("111222").email("user1@example.com").build();
         user2 = User.builder().id(new ObjectId(user2IdString)).firstName("User").lastName("Two").phoneNumber("333444").email("user2@example.com").build();
-
+ 
         vaId1 = new ObjectId(); // VisionAmbassador's own ID
         vaId2 = new ObjectId();
         vaIdWithInvalidUser = new ObjectId();
         vaIdWithNoUserLink = new ObjectId();
         vaIdNotFound = new ObjectId();
-
-
+ 
+ 
         ambassador1WithUser = VisionAmbassador.builder().id(vaId1).name("VA One").userId(user1IdString).build();
         ambassador2WithUser = VisionAmbassador.builder().id(vaId2).name("VA Two").userId(user2IdString).build();
         ambassadorWithInvalidUserId = VisionAmbassador.builder().id(vaIdWithInvalidUser).name("VA Invalid").userId("invalid-object-id-string").build();
         ambassadorWithNoUserLink = VisionAmbassador.builder().id(vaIdWithNoUserLink).name("VA No User Link").userId(userNonExistentIdString).build();
-
+ 
         referral1 = Referral.builder().id(new ObjectId()).patientName("Patient A").ambassadorId(vaId1).createdAt(new Date()).build(); // Links to ambassador1WithUser
         referral2 = Referral.builder().id(new ObjectId()).patientName("Patient B").ambassadorId(vaId2).createdAt(new Date()).build(); // Links to ambassador2WithUser
         referralWithNullAmbassadorId = Referral.builder().id(new ObjectId()).patientName("Patient C").ambassadorId(null).createdAt(new Date()).build();
         referralToVAWithInvalidUserId = Referral.builder().id(new ObjectId()).patientName("Patient D").ambassadorId(vaIdWithInvalidUser).createdAt(new Date()).build();
         referralToVAWithNoUserLink = Referral.builder().id(new ObjectId()).patientName("Patient E").ambassadorId(vaIdWithNoUserLink).createdAt(new Date()).build();
         referralToVANotFound = Referral.builder().id(new ObjectId()).patientName("Patient F").ambassadorId(vaIdNotFound).createdAt(new Date()).build();
-
+ 
         // Setup for bulkUpdateReferrals tests
         testHospitalId = new ObjectId();
         testPatientId = new ObjectId();
         testReferralId = new ObjectId();
-
+ 
         testHospital = Hospital.builder().id(testHospitalId).hospitalCode("HOS001").name("Test Hospital").build();
         testPatient = Patient.builder().id(testPatientId).name("Test Patient Bulk").age("30").phone("1234567890").gender(Gender.MALE).status("REFERRED").build();
         testReferral = Referral.builder().id(testReferralId).patientId(testPatientId).hospitalId(testHospitalId).status(Status.REFERRED).build();
     }
-
+ 
     private Patient createTestPatient(String id, List<String> referralIds) {
         Patient patient = Patient.builder()
                 .id(new ObjectId(id))
@@ -153,7 +153,7 @@ public class ReferralServiceTest {
         // patient.setStatus("SOME_INITIAL_STATUS"); // If needed for tests not related to createReferral's new logic
         return patient;
     }
-
+ 
     private ReferralRequest createTestReferralRequest(String patientId) {
         return ReferralRequest.builder()
                 .patientId(patientId)
@@ -162,7 +162,7 @@ public class ReferralServiceTest {
                 // Set other necessary fields for ReferralRequest
                 .build();
     }
-
+ 
     @Test
     void createReferral_whenPatientHasExistingReferredReferral_shouldThrowException() {
         // Arrange
@@ -172,14 +172,14 @@ public class ReferralServiceTest {
         ReferralRequest request = createTestReferralRequest(patientId);
         Referral existingReferral = Referral.builder().id(new ObjectId(existingReferralId)).status(Status.REFERRED).build();
         Referral newReferral = Referral.builder().id(new ObjectId()).build(); // For mocking
-
+ 
         when(patientRepository.findById(any(ObjectId.class))).thenReturn(Optional.of(patient));
         when(referralRepository.findAllByIdIn(patient.getReferralIds().stream().map(ObjectId::new).collect(Collectors.toList()))).thenReturn(Arrays.asList(existingReferral));
         // Add mocks to prevent NPEs if the IllegalArgumentException is not thrown early enough
         when(referralMapper.toEntity(request)).thenReturn(newReferral);
         when(referralRepository.save(newReferral)).thenReturn(newReferral);
-
-
+ 
+ 
         // Act & Assert
         // The core of this test is to ensure IllegalArgumentException for active referrals.
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
@@ -189,7 +189,7 @@ public class ReferralServiceTest {
         verify(referralRepository, never()).save(any(Referral.class));
         verify(patientRepository, never()).save(any(Patient.class)); // Patient should not be saved if referral creation fails early
     }
-
+ 
     @Test
     void createReferral_whenPatientHasExistingInProgressReferral_shouldThrowException() {
         // Arrange
@@ -199,13 +199,13 @@ public class ReferralServiceTest {
         ReferralRequest request = createTestReferralRequest(patientId);
         Referral existingReferral = Referral.builder().id(new ObjectId(existingReferralId)).status(Status.INPROGRESS).build();
         Referral newReferral = Referral.builder().id(new ObjectId()).build(); // For mocking
-
+ 
         when(patientRepository.findById(any(ObjectId.class))).thenReturn(Optional.of(patient));
         when(referralRepository.findAllByIdIn(patient.getReferralIds().stream().map(ObjectId::new).collect(Collectors.toList()))).thenReturn(Arrays.asList(existingReferral));
         // Add mocks to prevent NPEs if the IllegalArgumentException is not thrown early enough
         when(referralMapper.toEntity(request)).thenReturn(newReferral);
         when(referralRepository.save(newReferral)).thenReturn(newReferral);
-
+ 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
             referralService.createReferral(request);
@@ -214,7 +214,7 @@ public class ReferralServiceTest {
         verify(referralRepository, never()).save(any(Referral.class));
         verify(patientRepository, never()).save(any(Patient.class));
     }
-
+ 
     @Test
     void createReferral_whenPatientHasExistingCompletedReferral_shouldCreateNewReferral() {
         // Arrange
@@ -225,14 +225,14 @@ public class ReferralServiceTest {
         // Store original patient fields to check they are not modified
         String originalPatientHospitalName = patient.getHospitalName();
         String originalPatientStatus = patient.getStatus();
-
+ 
         ReferralRequest request = createTestReferralRequest(patientIdStr);
         Referral existingReferral = Referral.builder().id(new ObjectId(existingReferralIdStr)).status(Status.COMPLETED).build();
         Referral newReferral = Referral.builder().id(new ObjectId()).status(request.status()).build(); // Mapper output
         ReferralResponse expectedResponse = ReferralResponse.builder().id(newReferral.getId().toHexString()).build(); // Mapper output
-
+ 
         when(patientRepository.findById(patientObjectId)).thenReturn(Optional.of(patient));
-        // The following stubbing was marked as unnecessary. 
+        // The following stubbing was marked as unnecessary.
         // If existingReferral is COMPLETED, hasActiveReferral should return false.
         // The actual list of referrals might still be fetched by hasActiveReferral.
         // Removing the explicit stub for findAllByIdIn as it was marked unnecessary by Mockito.
@@ -240,25 +240,25 @@ public class ReferralServiceTest {
         when(referralMapper.toEntity(request)).thenReturn(newReferral);
         when(referralRepository.save(any(Referral.class))).thenReturn(newReferral);
         when(referralMapper.toResponse(eq(newReferral), any(),eq(null),eq(null))).thenReturn(expectedResponse);
-
-
+ 
+ 
         // Act
         ReferralResponse response = referralService.createReferral(request);
-
+ 
         // Assert
         assertNotNull(response);
         assertEquals(newReferral.getId().toHexString(), response.id());
-
+ 
         verify(referralRepository).save(referralCaptor.capture());
         Referral savedReferral = referralCaptor.getValue();
         assertNotNull(savedReferral.getCreatedAt());
         assertNotNull(savedReferral.getUpdatedAt());
-
+ 
         verify(patientRepository).save(patientCaptor.capture());
         Patient savedPatient = patientCaptor.getValue();
         assertTrue(savedPatient.getReferralIds().contains(newReferral.getId().toHexString()));
         assertEquals(2, savedPatient.getReferralIds().size()); // Existing + new
-
+ 
         // Verify patient's hospitalName is NOT changed to those from ReferralRequest, but status IS.
         assertEquals(originalPatientHospitalName, savedPatient.getHospitalName());
         assertEquals(Status.REFERRED.name(), savedPatient.getStatus());
@@ -272,40 +272,40 @@ public class ReferralServiceTest {
         Patient patient = createTestPatient(patientIdStr, new ArrayList<>()); // Empty list
         String originalPatientHospitalName = patient.getHospitalName();
         String originalPatientStatus = patient.getStatus();
-
+ 
         ReferralRequest request = createTestReferralRequest(patientIdStr);
         Referral newReferral = Referral.builder().id(new ObjectId()).status(request.status()).build();
         ReferralResponse expectedResponse = ReferralResponse.builder().id(newReferral.getId().toHexString()).build();
-
+ 
         when(patientRepository.findById(patientObjectId)).thenReturn(Optional.of(patient));
         // No call to referralRepository.findAllByIdIn when referralIds is empty
         when(referralMapper.toEntity(request)).thenReturn(newReferral);
         when(referralRepository.save(any(Referral.class))).thenReturn(newReferral);
         when(referralMapper.toResponse(eq(newReferral), any(),eq(null),eq(null))).thenReturn(expectedResponse);
-
+ 
         // Act
         ReferralResponse response = referralService.createReferral(request);
-
+ 
         // Assert
         assertNotNull(response);
         assertEquals(newReferral.getId().toHexString(), response.id());
-
+ 
         verify(referralRepository).save(referralCaptor.capture());
         Referral savedReferral = referralCaptor.getValue();
         assertNotNull(savedReferral.getCreatedAt());
         assertNotNull(savedReferral.getUpdatedAt());
-
+ 
         verify(patientRepository).save(patientCaptor.capture());
         Patient savedPatient = patientCaptor.getValue();
         assertTrue(savedPatient.getReferralIds().contains(newReferral.getId().toHexString()));
         assertEquals(1, savedPatient.getReferralIds().size());
-
+ 
         assertEquals(originalPatientHospitalName, savedPatient.getHospitalName());
         assertEquals(Status.REFERRED.name(), savedPatient.getStatus());
         
         verify(referralRepository, never()).findAllByIdIn(anyList());
     }
-
+ 
     @Test
     void createReferral_whenPatientReferralIdsListIsNull_shouldInitializeAndCreateNewReferral() {
         // Arrange
@@ -315,29 +315,29 @@ public class ReferralServiceTest {
         assertNull(patient.getReferralIds());
         String originalPatientHospitalName = patient.getHospitalName();
         String originalPatientStatus = patient.getStatus();
-
-
+ 
+ 
         ReferralRequest request = createTestReferralRequest(patientIdStr);
         Referral newReferral = Referral.builder().id(new ObjectId()).status(request.status()).build();
         ReferralResponse expectedResponse = ReferralResponse.builder().id(newReferral.getId().toHexString()).build();
-
+ 
         when(patientRepository.findById(patientObjectId)).thenReturn(Optional.of(patient));
         when(referralMapper.toEntity(request)).thenReturn(newReferral);
         when(referralRepository.save(any(Referral.class))).thenReturn(newReferral);
         when(referralMapper.toResponse(eq(newReferral), any(),eq(null),eq(null))).thenReturn(expectedResponse);
-
+ 
         // Act
         ReferralResponse response = referralService.createReferral(request);
-
+ 
         // Assert
         assertNotNull(response);
         assertEquals(newReferral.getId().toHexString(), response.id());
-
+ 
         verify(referralRepository).save(referralCaptor.capture());
         Referral savedReferral = referralCaptor.getValue();
         assertNotNull(savedReferral.getCreatedAt());
         assertNotNull(savedReferral.getUpdatedAt());
-
+ 
         verify(patientRepository).save(patientCaptor.capture());
         Patient savedPatient = patientCaptor.getValue();
         assertNotNull(savedPatient.getReferralIds()); // Should be initialized
@@ -346,11 +346,11 @@ public class ReferralServiceTest {
         
         assertEquals(originalPatientHospitalName, savedPatient.getHospitalName());
         assertEquals(Status.REFERRED.name(), savedPatient.getStatus());
-
+ 
         verify(referralRepository, never()).findAllByIdIn(anyList());
     }
-
-
+ 
+ 
     @Test
     void testFilterReferrals_EnrichesAmbassadorDetailsAndSortsByDefault() {
         // Arrange
@@ -359,24 +359,24 @@ public class ReferralServiceTest {
                 referralToVAWithInvalidUserId, referralToVAWithNoUserLink, referralToVANotFound
         );
         Pageable unsortedPageable = PageRequest.of(0, 10);
-
+ 
         when(mongoTemplate.find(queryCaptor.capture(), eq(Referral.class))).thenReturn(referralsFromDb);
         when(mongoTemplate.count(any(Query.class), eq(Referral.class))).thenReturn((long) referralsFromDb.size());
-
+ 
         // Mock VisionAmbassador repo
         when(visionAmbassadorRepository.findById(vaId1)).thenReturn(Optional.of(ambassador1WithUser));
         when(visionAmbassadorRepository.findById(vaId2)).thenReturn(Optional.of(ambassador2WithUser));
         when(visionAmbassadorRepository.findById(vaIdWithInvalidUser)).thenReturn(Optional.of(ambassadorWithInvalidUserId));
         when(visionAmbassadorRepository.findById(vaIdWithNoUserLink)).thenReturn(Optional.of(ambassadorWithNoUserLink));
         when(visionAmbassadorRepository.findById(vaIdNotFound)).thenReturn(Optional.empty());
-
-
+ 
+ 
         // Mock User repo
         when(userRepository.findById(eq(new ObjectId(user1IdString)))).thenReturn(Optional.of(user1));
         when(userRepository.findById(eq(new ObjectId(user2IdString)))).thenReturn(Optional.of(user2));
         when(userRepository.findById(eq(new ObjectId(userNonExistentIdString)))).thenReturn(Optional.empty()); // For ambassadorWithNoUserLink
-
-
+ 
+ 
         // Mock the mapper behavior for each referral, now with User
         when(referralMapper.toResponse(eq(referral1), eq(user1), eq(null),eq(null)))
             .thenReturn(ReferralResponse.builder().id(referral1.getId().toHexString()).patientName("Patient A")
@@ -394,15 +394,15 @@ public class ReferralServiceTest {
             .thenReturn(ReferralResponse.builder().id(referralToVAWithNoUserLink.getId().toHexString()).patientName("Patient E").build());
         when(referralMapper.toResponse(eq(referralToVANotFound), eq(null), eq(null),eq(null))) // VA itself not found
             .thenReturn(ReferralResponse.builder().id(referralToVANotFound.getId().toHexString()).patientName("Patient F").build());
-
+ 
         // Act
-        Page<ReferralResponse> resultPage = referralService.filterReferrals(null, null, null, null, null, unsortedPageable);
-
+        Page<ReferralResponse> resultPage = referralService.filterReferrals(null, null, null, null, null,null,unsortedPageable);
+ 
         // Assert
         assertNotNull(resultPage);
         assertEquals(referralsFromDb.size(), resultPage.getTotalElements());
         assertEquals(referralsFromDb.size(), resultPage.getContent().size());
-
+ 
         // Verify ambassador details by checking the mocked mapper outputs
         assertTrue(resultPage.getContent().stream().anyMatch(r -> "User One".equals(r.ambassadorName()) && "user1@example.com".equals(r.ambassadorEmail())));
         assertTrue(resultPage.getContent().stream().anyMatch(r -> "User Two".equals(r.ambassadorName()) && "user2@example.com".equals(r.ambassadorEmail())));
@@ -411,7 +411,7 @@ public class ReferralServiceTest {
             .filter(r -> r.ambassadorName() == null && r.ambassadorEmail() == null && r.ambassadorPhoneNumber() == null)
             .count();
         assertEquals(4, countWithNullAmbassadorDetails); // referralWithNullAmbassadorId, referralToVAWithInvalidUserId, referralToVAWithNoUserLink, referralToVANotFound
-
+ 
         // Verify VisionAmbassadorRepository findById calls
         verify(visionAmbassadorRepository).findById(vaId1);
         verify(visionAmbassadorRepository).findById(vaId2);
@@ -427,8 +427,8 @@ public class ReferralServiceTest {
         // Should NOT be called if referral.getAmbassadorId() is null
         // Should NOT be called if VA itself is not found
         verify(userRepository, times(3)).findById(any(ObjectId.class));
-
-
+ 
+ 
         // Verify default sorting
         Query capturedQuery = queryCaptor.getValue();
         Document sortDocument = capturedQuery.getSortObject();
@@ -436,17 +436,17 @@ public class ReferralServiceTest {
         assertFalse(sortDocument.isEmpty(), "Sort document should not be empty for default sort");
         assertEquals(-1, sortDocument.getInteger("createdAt"), "Should sort by createdAt descending");
     }
-
+ 
     @Test
     void testFilterReferrals_RespectsClientSort() {
         // Arrange
         Pageable clientSortedPageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "patientName"));
         when(mongoTemplate.find(queryCaptor.capture(), eq(Referral.class))).thenReturn(Collections.emptyList());
         when(mongoTemplate.count(any(Query.class), eq(Referral.class))).thenReturn(0L);
-
+ 
         // Act
-        referralService.filterReferrals(null, null, null, null, null, clientSortedPageable);
-
+        referralService.filterReferrals(null, null, null, null, null, null,clientSortedPageable);
+ 
         // Assert
         Query capturedQuery = queryCaptor.getValue();
         Document sortDocument = capturedQuery.getSortObject();
@@ -455,13 +455,13 @@ public class ReferralServiceTest {
         assertEquals(1, sortDocument.getInteger("patientName"), "Should sort by patientName ascending");
         assertNull(sortDocument.get("createdAt"), "Default sort by createdAt should not be applied");
     }
-
+ 
     // --- Tests for bulkUpdateReferrals ---
-
+ 
     private BulkReferralUpdateRequest.EyeDetailsDto createEyeDetailsDto(Double sph, Double cyl, Integer axis) {
         return BulkReferralUpdateRequest.EyeDetailsDto.builder().sph(sph).cyl(cyl).axis(axis).build();
     }
-
+ 
     @Test
     void bulkUpdateReferrals_found_statusProvided_validStatus_shouldUpdate() {
         // Arrange
@@ -478,21 +478,21 @@ public class ReferralServiceTest {
                 .hospitalName("Old Hospital Name for Logging")
                 .build();
         List<BulkReferralUpdateRequest> bulkRequest = Collections.singletonList(request);
-
+ 
         when(hospitalRepository.findByHospitalCode("HOS001")).thenReturn(Optional.of(testHospital));
         when(patientRepository.findByAgeAndPhoneAndGender("30", "1234567890", Gender.MALE)).thenReturn(Optional.of(testPatient));
         when(referralRepository.findByPatientIdAndHospitalId(testPatientId, testHospitalId)).thenReturn(Optional.of(testReferral));
         when(patientRepository.save(any(Patient.class))).thenReturn(testPatient);
         when(referralRepository.save(any(Referral.class))).thenReturn(testReferral);
-
+ 
         // Act
         BulkReferralUpdateResponse response = referralService.bulkUpdateReferrals(bulkRequest);
-
+ 
         // Assert
         assertEquals(1, response.getUpdatedRecords());
         assertEquals(0, response.getRejectedRecords());
         assertTrue(response.getRejectedList().isEmpty());
-
+ 
         verify(patientRepository).save(patientCaptor.capture());
         assertEquals("COMPLETED", patientCaptor.getValue().getStatus());
         
@@ -504,7 +504,7 @@ public class ReferralServiceTest {
         assertNotNull(savedReferral.getSpectacleRequestedOn());
         assertTrue(savedReferral.getIsSpectacleRequested());
     }
-
+ 
     @Test
     void bulkUpdateReferrals_found_statusMissing_shouldUpdateDetailsNotStatus() {
         // Arrange
@@ -520,47 +520,47 @@ public class ReferralServiceTest {
         
         String originalPatientStatus = testPatient.getStatus();
         Status originalReferralStatus = testReferral.getStatus();
-
+ 
         when(hospitalRepository.findByHospitalCode("HOS001")).thenReturn(Optional.of(testHospital));
         when(patientRepository.findByAgeAndPhoneAndGender("30", "1234567890", Gender.MALE)).thenReturn(Optional.of(testPatient));
         when(referralRepository.findByPatientIdAndHospitalId(testPatientId, testHospitalId)).thenReturn(Optional.of(testReferral));
         when(patientRepository.save(any(Patient.class))).thenReturn(testPatient);
         when(referralRepository.save(any(Referral.class))).thenReturn(testReferral);
-
+ 
         // Act
         BulkReferralUpdateResponse response = referralService.bulkUpdateReferrals(bulkRequest);
-
+ 
         // Assert
         assertEquals(1, response.getUpdatedRecords());
         assertEquals(0, response.getRejectedRecords());
-
+ 
         verify(patientRepository).save(patientCaptor.capture());
         assertEquals(originalPatientStatus, patientCaptor.getValue().getStatus()); // Status should not change
-
+ 
         verify(referralRepository).save(referralCaptor.capture());
         Referral savedReferral = referralCaptor.getValue();
         assertEquals(originalReferralStatus, savedReferral.getStatus()); // Status should not change
         assertEquals("2.0", savedReferral.getRightEye().getSph());
         assertTrue(savedReferral.getIsSpectacleRequested());
     }
-
+ 
     @Test
     void bulkUpdateReferrals_hospitalNotFound_shouldReject() {
         // Arrange
         BulkReferralUpdateRequest request = BulkReferralUpdateRequest.builder().hospitalCode("INVALID_CODE").build();
         List<BulkReferralUpdateRequest> bulkRequest = Collections.singletonList(request);
-
+ 
         when(hospitalRepository.findByHospitalCode("INVALID_CODE")).thenReturn(Optional.empty());
-
+ 
         // Act
         BulkReferralUpdateResponse response = referralService.bulkUpdateReferrals(bulkRequest);
-
+ 
         // Assert
         assertEquals(0, response.getUpdatedRecords());
         assertEquals(1, response.getRejectedRecords());
         assertEquals(request.getReferrals(), response.getRejectedList().get(0).getReferrals()); // Using 'referrals' as patient name for logging
     }
-
+ 
     @Test
     void bulkUpdateReferrals_patientNotFound_shouldReject() {
         // Arrange
@@ -571,18 +571,18 @@ public class ReferralServiceTest {
                 .gender("FEMALE")
                 .build();
         List<BulkReferralUpdateRequest> bulkRequest = Collections.singletonList(request);
-
+ 
         when(hospitalRepository.findByHospitalCode("HOS001")).thenReturn(Optional.of(testHospital));
         when(patientRepository.findByAgeAndPhoneAndGender("30", "UNKNOWN_CONTACT", Gender.FEMALE)).thenReturn(Optional.empty());
-
+ 
         // Act
         BulkReferralUpdateResponse response = referralService.bulkUpdateReferrals(bulkRequest);
-
+ 
         // Assert
         assertEquals(0, response.getUpdatedRecords());
         assertEquals(1, response.getRejectedRecords());
     }
-
+ 
     @Test
     void bulkUpdateReferrals_referralEntityNotFound_shouldReject() {
         // Arrange
@@ -593,14 +593,14 @@ public class ReferralServiceTest {
                 .gender("MALE")
                 .build();
         List<BulkReferralUpdateRequest> bulkRequest = Collections.singletonList(request);
-
+ 
         when(hospitalRepository.findByHospitalCode("HOS001")).thenReturn(Optional.of(testHospital));
         when(patientRepository.findByAgeAndPhoneAndGender("30", "1234567890", Gender.MALE)).thenReturn(Optional.of(testPatient));
         when(referralRepository.findByPatientIdAndHospitalId(testPatientId, testHospitalId)).thenReturn(Optional.empty());
         
         // Act
         BulkReferralUpdateResponse response = referralService.bulkUpdateReferrals(bulkRequest);
-
+ 
         // Assert
         assertEquals(0, response.getUpdatedRecords());
         assertEquals(1, response.getRejectedRecords());
@@ -616,19 +616,19 @@ public class ReferralServiceTest {
                 .gender("INVALID_GENDER") // Invalid gender
                 .build();
         List<BulkReferralUpdateRequest> bulkRequest = Collections.singletonList(request);
-
+ 
         when(hospitalRepository.findByHospitalCode("HOS001")).thenReturn(Optional.of(testHospital));
         // Patient repo findByAgeAndPhoneAndGender will not be called due to early exit
-
+ 
         // Act
         BulkReferralUpdateResponse response = referralService.bulkUpdateReferrals(bulkRequest);
-
+ 
         // Assert
         assertEquals(0, response.getUpdatedRecords());
         assertEquals(1, response.getRejectedRecords());
         verify(patientRepository, never()).findByAgeAndPhoneAndGender(any(), any(), any());
     }
-
+ 
     @Test
     void bulkUpdateReferrals_statusProvided_invalidStatusString_shouldReject() {
         // Arrange
@@ -640,22 +640,22 @@ public class ReferralServiceTest {
                 .status("INVALID_STATUS_STRING") // Invalid status
                 .build();
         List<BulkReferralUpdateRequest> bulkRequest = Collections.singletonList(request);
-
+ 
         when(hospitalRepository.findByHospitalCode("HOS001")).thenReturn(Optional.of(testHospital));
         when(patientRepository.findByAgeAndPhoneAndGender("30", "1234567890", Gender.MALE)).thenReturn(Optional.of(testPatient));
         when(referralRepository.findByPatientIdAndHospitalId(testPatientId, testHospitalId)).thenReturn(Optional.of(testReferral));
         // Save methods should not be called
-
+ 
         // Act
         BulkReferralUpdateResponse response = referralService.bulkUpdateReferrals(bulkRequest);
-
+ 
         // Assert
         assertEquals(0, response.getUpdatedRecords());
         assertEquals(1, response.getRejectedRecords());
         verify(patientRepository, never()).save(any());
         verify(referralRepository, never()).save(any());
     }
-
+ 
      @Test
     void bulkUpdateReferrals_nullAgeInRequest_shouldPassNullOrStringifiedNullToRepo() {
         BulkReferralUpdateRequest request = BulkReferralUpdateRequest.builder()
@@ -666,20 +666,21 @@ public class ReferralServiceTest {
                 .status("COMPLETED")
                 .build();
         List<BulkReferralUpdateRequest> bulkRequest = Collections.singletonList(request);
-
+ 
         when(hospitalRepository.findByHospitalCode("HOS001")).thenReturn(Optional.of(testHospital));
         // We want to verify that findByAgeAndPhoneAndGender is called with null or "null" for age
         // For this test, let's assume it leads to patient not found for simplicity of assertion focus.
         when(patientRepository.findByAgeAndPhoneAndGender(eq(null), eq("1234567890"), eq(Gender.MALE)))
             .thenReturn(Optional.empty());
-
-
+ 
+ 
         BulkReferralUpdateResponse response = referralService.bulkUpdateReferrals(bulkRequest);
-
+ 
         assertEquals(0, response.getUpdatedRecords());
         assertEquals(1, response.getRejectedRecords());
         // Verify that the repository method was called with null for the age parameter
         verify(patientRepository).findByAgeAndPhoneAndGender(null, "1234567890", Gender.MALE);
     }
-
+ 
 }
+ 

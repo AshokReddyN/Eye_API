@@ -12,7 +12,7 @@ import com.nayonikaeyecare.api.entities.Status;
 import com.nayonikaeyecare.api.services.PatientService;
 import com.nayonikaeyecare.api.services.ReportJsonImportService;
 
-@CrossOrigin(origins = {"http://localhost:3000","http://nayonika-user-management-dev-1511095685.ap-south-1.elb.amazonaws.com","http://nayonika-user-management-qa-580028363.ap-south-1.elb.amazonaws.com"})
+@CrossOrigin(origins = {"http://localhost:3000","http://nayonika-user-management-dev-1511095685.ap-south-1.elb.amazonaws.com","http://nayonika-user-management-qa-580028363.ap-south-1.elb.amazonaws.com","http://nayonika-user-management-stg-1382154925.ap-south-1.elb.amazonaws.com"})
 @RestController
 @RequestMapping("/api/reports")
 @RequiredArgsConstructor
