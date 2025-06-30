@@ -21,6 +21,7 @@ import com.nayonikaeyecare.api.entities.user.UserSessionStatus;
 import com.nayonikaeyecare.api.entities.user.UserStatus;
 import com.nayonikaeyecare.api.repositories.application.ApplicationRepository;
 import com.nayonikaeyecare.api.repositories.user.UserCredentialRepository;
+import com.nayonikaeyecare.api.exceptions.InvalidApplicationCodeException; // Added
 import com.nayonikaeyecare.api.repositories.user.UserNotFoundException;
 import com.nayonikaeyecare.api.repositories.user.UserRepository;
 import com.nayonikaeyecare.api.repositories.user.UserSessionRepository;
@@ -106,39 +107,67 @@ public class UserService {
      */
     @Nonnull
     public AuthenticationResponse authenticateUser(@Nonnull AuthenticationRequest authenticationRequest) {
-        UserCredential userCredential = userCredentialRepository.findByCredential(authenticationRequest.credential());
+        String applicationCode = authenticationRequest.applicationCode();
+        String credential = authenticationRequest.credential(); // This is the mobile number
+
+        if ("WEB_PORTAL".equals(applicationCode)) {
+            userRepository.findByPhoneNumber(credential)
+                    .orElseThrow(() -> new UserNotFoundException(
+                            "User not found with the provided mobile number. Please contact the application administrator."));
+            // If user exists, proceed with normal OTP logic
+        } else if (!"MOBILE_APP".equals(applicationCode)) {
+            // Neither WEB_PORTAL nor MOBILE_APP
+            throw new InvalidApplicationCodeException("Invalid applicationCode: " + applicationCode);
+        }
+        // For MOBILE_APP, or if WEB_PORTAL user check passed, continue with existing logic
+
+        UserCredential userCredential = userCredentialRepository.findByCredential(credential);
         boolean userCreated = false;
         if (userCredential == null) {
             // check if the user can be created for the application because of
             // autoregistration
+            // Note: checkAndCreateUserForApplication itself throws exceptions if app code is invalid or auto-reg is off
             userCreated = checkAndCreateUserForApplication(authenticationRequest, userCredential);
-            userCredential = userCredentialRepository
-                    .findByCredential(authenticationRequest.credential());
+            userCredential = userCredentialRepository.findByCredential(credential);
         } else {
-            // user crednetial already exists hence no need to create a new user
-            userCreated = userRepository
-            .findByUserCredentialId(userCredential.getId()).getPhoneNumber()==null;
+            // user credential already exists hence no need to create a new user
+            // Check if phone number is null for existing user linked to this credential
+            User existingUser = userRepository.findByUserCredentialId(userCredential.getId());
+            if (existingUser != null) {
+                userCreated = existingUser.getPhoneNumber() == null;
+            } else {
+                // This case should ideally not happen if data integrity is maintained
+                // (UserCredential exists but no corresponding User).
+                // If it does, treat as if user needs to be fully "created" or associated.
+                userCreated = true; 
+            }
         }
-        // check if the user credential still not null because of the application auto
-        // registration rules is not null
+
+        // check if the user credential is not null (either found or created)
         if (userCredential != null) {
             String otp = generateOtp();
-            // generate a new session for the user and send the back
-            User user = userRepository
-            .findByUserCredentialId(userCredential.getId());
+            User user = userRepository.findByUserCredentialId(userCredential.getId());
+            
+            // Ensure user is found, especially after potential creation.
+            if (user == null) {
+                // This would indicate an issue with user creation logic or data consistency.
+                throw new UserNotFoundException("User could not be determined for the credential.");
+            }
+
             UserSession newUserSession = UserSession.builder()
                     .userId(user.getId())
-                    .applicationCode(authenticationRequest.applicationCode())
+                    .applicationCode(applicationCode)
                     .otp(otp)
                     .status(UserSessionStatus.INITIATIED)
                     .createdAt(new java.util.Date())
                     .build();
-            UserSession savedUserSession = userSessionRepository
-                    .save(newUserSession);
+            UserSession savedUserSession = userSessionRepository.save(newUserSession);
 
-            // Retrieve the full User object to get the phone number
+            // Retrieve the full User object to get the phone number for sending OTP
+            // User object obtained above might be sufficient if it's consistently populated
             User fullUser = userRepository.findById(user.getId())
-                .orElseThrow(() -> new UserNotFoundException("User not found after session creation with id: " + user.getId()));
+                    .orElseThrow(() -> new UserNotFoundException(
+                            "User not found after session creation with id: " + user.getId()));
 
             if (fullUser.getPhoneNumber() != null && !fullUser.getPhoneNumber().isEmpty()) {
                 smsService.sendOtp(fullUser.getPhoneNumber(), otp);
@@ -147,10 +176,16 @@ public class UserService {
             return new AuthenticationResponse(savedUserSession.getId().toString(),
                     userCreated, user.getId().toString());
         } else {
-            // throw an error as the application does not allow for auto registration
-            throw new UserNotFoundException("Invalid credentials");
+            // This block should ideally not be reached if checkAndCreateUserForApplication
+            // throws for invalid app codes or if WEB_PORTAL check already failed.
+            // It might be reached if MOBILE_APP tries to register and auto-registration is off for MOBILE_APP.
+            Application application = applicationRepository.findByCode(applicationCode);
+            if (application == null || !application.isAllowAutoRegistration()) {
+                 throw new UserNotFoundException("User not found and auto-registration is not permitted for this application.");
+            }
+            // Fallback, though logic above should handle specific cases.
+            throw new UserNotFoundException("Invalid credentials or user creation failed.");
         }
-
     }
 
     /**
@@ -218,35 +253,42 @@ public class UserService {
      */
 
     private boolean checkAndCreateUserForApplication(AuthenticationRequest authenticationRequest,
-            UserCredential userCredential) {
+            UserCredential userCredentialInput) { // Renamed parameter to avoid confusion with outer scope
         Application application = applicationRepository
                 .findByCode(authenticationRequest.applicationCode());
-        boolean userCreated = false;
+        boolean userJustCreated = false; // More descriptive variable name
         if (application != null) {
             if (application.isAllowAutoRegistration()) {
-                // User does not exist, but auto-registration is allowed
-                // auto create a new user credential
-                userCredential = UserCredential.builder()
+                // User does not exist, but auto-registration is allowed for this application.
+                // Create a new user credential if it wasn't found before.
+                UserCredential newUserCredential = UserCredential.builder()
                         .credential(authenticationRequest.credential())
                         .build();
-                userCredentialRepository.save(userCredential);
+                userCredentialRepository.save(newUserCredential);
                 // Create a new user with the provided details
                 User user = User.builder()
-                        .userCredentialId(userCredential.getId())
-                        .phoneNumber(userCredential.getCredential())
+                        .userCredentialId(newUserCredential.getId())
+                        .phoneNumber(newUserCredential.getCredential()) // Set phone number from credential
                         .createdAt(new java.util.Date())
+                        .status(UserStatus.ACTIVE) // Default status
                         .build();
                 userRepository.save(user);
-                userCreated = true;
-                return userCreated;
+                userJustCreated = true;
+                return userJustCreated;
 
             } else {
-                // application does not allow for automatic creation of user credentials
-                throw new IllegalArgumentException("Invalid credentials");
+                // application does not allow for automatic creation of user credentials,
+                // and the user was not found by credential earlier.
+                throw new UserNotFoundException(
+                        "User not found and auto-registration is not allowed for this application.");
             }
         } else {
-            // application code was invalid
-            throw new IllegalArgumentException("Incorrect credentials");
+            // application code itself was invalid (no application found for this code)
+            // This case is now handled by the initial check in authenticateUser for non WEB_PORTAL/MOBILE_APP codes.
+            // However, keeping a safeguard here if checkAndCreateUserForApplication is called directly elsewhere
+            // or if MOBILE_APP has an invalid application code in its configuration (which shouldn't happen).
+            throw new InvalidApplicationCodeException(
+                    "Application code " + authenticationRequest.applicationCode() + " is invalid.");
         }
     }
 

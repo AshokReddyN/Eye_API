@@ -6,6 +6,9 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+// Import for UserNotFoundException from the repositories.user package
+import com.nayonikaeyecare.api.repositories.user.UserNotFoundException;
+
 import java.util.Map;
 
 @ControllerAdvice // ✅ This makes it a global exception handler
@@ -37,6 +40,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error","exception occured "+ e.getMessage()));
     }
 
+    // Specific handler for UserNotFoundException from the repositories.user package
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleUserNotFoundException(UserNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+    }
+
+    // Handler for InvalidApplicationCodeException
+    @ExceptionHandler(InvalidApplicationCodeException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidApplicationCodeException(InvalidApplicationCodeException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+    }
+
     // ✅ Handle Duplicate Patient Exception
     @ExceptionHandler(DuplicatePatientException.class)
     public ResponseEntity<Map<String, String>> handleDuplicatePatient(DuplicatePatientException e) {
@@ -50,3 +65,4 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Something went wrong: " + e.getMessage()));
     }
 }
+ 

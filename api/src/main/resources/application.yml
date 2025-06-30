@@ -9,10 +9,15 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:dev}
 server:
   port: 8081
-
+ 
 jwt:
   secret: "thisisasecretkeythatis32byteslongButNotReallyAndItShouldBeKeptSecret"
   expiration: 3600
 auth:
   excluded:
     path: /auth,/v3/api-docs,/swagger-ui,/swagger-resources
+    
+logging:
+  level:
+    "[org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer]": error
+ 
