@@ -480,8 +480,8 @@ public class ReferralServiceTest {
         List<BulkReferralUpdateRequest> bulkRequest = Collections.singletonList(request);
  
         when(hospitalRepository.findByHospitalCode("HOS001")).thenReturn(Optional.of(testHospital));
-        when(patientRepository.findByAgeAndPhoneAndGender("30", "1234567890", Gender.MALE)).thenReturn(Optional.of(testPatient));
-        when(referralRepository.findByPatientIdAndHospitalId(testPatientId, testHospitalId)).thenReturn(Optional.of(testReferral));
+        when(patientRepository.findFirstByAgeAndPhoneAndGenderOrderByCreatedAtDesc("30", "1234567890", Gender.MALE)).thenReturn(Optional.of(testPatient));
+        when(referralRepository.findFirstByPatientIdAndHospitalIdOrderByCreatedAtDesc(testPatientId, testHospitalId)).thenReturn(Optional.of(testReferral));
         when(patientRepository.save(any(Patient.class))).thenReturn(testPatient);
         when(referralRepository.save(any(Referral.class))).thenReturn(testReferral);
  
@@ -522,8 +522,8 @@ public class ReferralServiceTest {
         Status originalReferralStatus = testReferral.getStatus();
  
         when(hospitalRepository.findByHospitalCode("HOS001")).thenReturn(Optional.of(testHospital));
-        when(patientRepository.findByAgeAndPhoneAndGender("30", "1234567890", Gender.MALE)).thenReturn(Optional.of(testPatient));
-        when(referralRepository.findByPatientIdAndHospitalId(testPatientId, testHospitalId)).thenReturn(Optional.of(testReferral));
+        when(patientRepository.findFirstByAgeAndPhoneAndGenderOrderByCreatedAtDesc("30", "1234567890", Gender.MALE)).thenReturn(Optional.of(testPatient));
+        when(referralRepository.findFirstByPatientIdAndHospitalIdOrderByCreatedAtDesc(testPatientId, testHospitalId)).thenReturn(Optional.of(testReferral));
         when(patientRepository.save(any(Patient.class))).thenReturn(testPatient);
         when(referralRepository.save(any(Referral.class))).thenReturn(testReferral);
  
@@ -573,7 +573,7 @@ public class ReferralServiceTest {
         List<BulkReferralUpdateRequest> bulkRequest = Collections.singletonList(request);
  
         when(hospitalRepository.findByHospitalCode("HOS001")).thenReturn(Optional.of(testHospital));
-        when(patientRepository.findByAgeAndPhoneAndGender("30", "UNKNOWN_CONTACT", Gender.FEMALE)).thenReturn(Optional.empty());
+        when(patientRepository.findFirstByAgeAndPhoneAndGenderOrderByCreatedAtDesc("30", "UNKNOWN_CONTACT", Gender.FEMALE)).thenReturn(Optional.empty());
  
         // Act
         BulkReferralUpdateResponse response = referralService.bulkUpdateReferrals(bulkRequest);
@@ -595,8 +595,8 @@ public class ReferralServiceTest {
         List<BulkReferralUpdateRequest> bulkRequest = Collections.singletonList(request);
  
         when(hospitalRepository.findByHospitalCode("HOS001")).thenReturn(Optional.of(testHospital));
-        when(patientRepository.findByAgeAndPhoneAndGender("30", "1234567890", Gender.MALE)).thenReturn(Optional.of(testPatient));
-        when(referralRepository.findByPatientIdAndHospitalId(testPatientId, testHospitalId)).thenReturn(Optional.empty());
+        when(patientRepository.findFirstByAgeAndPhoneAndGenderOrderByCreatedAtDesc("30", "1234567890", Gender.MALE)).thenReturn(Optional.of(testPatient));
+        when(referralRepository.findFirstByPatientIdAndHospitalIdOrderByCreatedAtDesc(testPatientId, testHospitalId)).thenReturn(Optional.empty());
         
         // Act
         BulkReferralUpdateResponse response = referralService.bulkUpdateReferrals(bulkRequest);
@@ -626,7 +626,7 @@ public class ReferralServiceTest {
         // Assert
         assertEquals(0, response.getUpdatedRecords());
         assertEquals(1, response.getRejectedRecords());
-        verify(patientRepository, never()).findByAgeAndPhoneAndGender(any(), any(), any());
+        verify(patientRepository, never()).findFirstByAgeAndPhoneAndGenderOrderByCreatedAtDesc(any(), any(), any());
     }
  
     @Test
@@ -642,8 +642,8 @@ public class ReferralServiceTest {
         List<BulkReferralUpdateRequest> bulkRequest = Collections.singletonList(request);
  
         when(hospitalRepository.findByHospitalCode("HOS001")).thenReturn(Optional.of(testHospital));
-        when(patientRepository.findByAgeAndPhoneAndGender("30", "1234567890", Gender.MALE)).thenReturn(Optional.of(testPatient));
-        when(referralRepository.findByPatientIdAndHospitalId(testPatientId, testHospitalId)).thenReturn(Optional.of(testReferral));
+        when(patientRepository.findFirstByAgeAndPhoneAndGenderOrderByCreatedAtDesc("30", "1234567890", Gender.MALE)).thenReturn(Optional.of(testPatient));
+        when(referralRepository.findFirstByPatientIdAndHospitalIdOrderByCreatedAtDesc(testPatientId, testHospitalId)).thenReturn(Optional.of(testReferral));
         // Save methods should not be called
  
         // Act
@@ -668,9 +668,9 @@ public class ReferralServiceTest {
         List<BulkReferralUpdateRequest> bulkRequest = Collections.singletonList(request);
  
         when(hospitalRepository.findByHospitalCode("HOS001")).thenReturn(Optional.of(testHospital));
-        // We want to verify that findByAgeAndPhoneAndGender is called with null or "null" for age
+        // We want to verify that findFirstByAgeAndPhoneAndGenderOrderByCreatedAtDesc is called with null or "null" for age
         // For this test, let's assume it leads to patient not found for simplicity of assertion focus.
-        when(patientRepository.findByAgeAndPhoneAndGender(eq(null), eq("1234567890"), eq(Gender.MALE)))
+        when(patientRepository.findFirstByAgeAndPhoneAndGenderOrderByCreatedAtDesc(eq(null), eq("1234567890"), eq(Gender.MALE)))
             .thenReturn(Optional.empty());
  
  
@@ -679,7 +679,7 @@ public class ReferralServiceTest {
         assertEquals(0, response.getUpdatedRecords());
         assertEquals(1, response.getRejectedRecords());
         // Verify that the repository method was called with null for the age parameter
-        verify(patientRepository).findByAgeAndPhoneAndGender(null, "1234567890", Gender.MALE);
+        verify(patientRepository).findFirstByAgeAndPhoneAndGenderOrderByCreatedAtDesc(null, "1234567890", Gender.MALE);
     }
  
 }

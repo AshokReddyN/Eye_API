@@ -34,5 +34,5 @@ public interface ReferralRepository extends MongoRepository<Referral, ObjectId>,
 
     List<Referral> findAllByIdIn(List<ObjectId> ids);
 
-    Optional<Referral> findByPatientIdAndHospitalId(ObjectId patientId, ObjectId hospitalId);
+    Optional<Referral> findFirstByPatientIdAndHospitalIdOrderByCreatedAtDesc(ObjectId patientId, ObjectId hospitalId);
 }

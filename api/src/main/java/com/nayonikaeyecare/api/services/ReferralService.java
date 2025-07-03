@@ -573,7 +573,7 @@ public class ReferralService {
             }
 
             String ageString = request.getAge() != null ? String.valueOf(request.getAge()) : null;
-            Optional<Patient> patientOpt = patientRepository.findByAgeAndPhoneAndGender(ageString,
+            Optional<Patient> patientOpt = patientRepository.findFirstByAgeAndPhoneAndGenderOrderByCreatedAtDesc(ageString,
                     request.getGuardianContact(), patientGender);
             if (!patientOpt.isPresent()) {
                 log.warn("Patient not found for age: {}, phone: {}, gender: {}. Rejecting referral.", ageString,
@@ -585,7 +585,7 @@ public class ReferralService {
             }
             Patient patient = patientOpt.get();
 
-            Optional<Referral> referralOpt = referralRepository.findByPatientIdAndHospitalId(patient.getId(),
+            Optional<Referral> referralOpt = referralRepository.findFirstByPatientIdAndHospitalIdOrderByCreatedAtDesc(patient.getId(),
                     hospital.getId());
             if (!referralOpt.isPresent()) {
                 log.warn("Referral not found for patient ID: {} and hospital ID: {}. Rejecting referral.",

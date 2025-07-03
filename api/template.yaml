@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  SAM template for Nayonika Eyecare API Lambda
+
+Resources:
+  NayonikaApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: NayonikaEyecareApiLambda
+      Description: Nayonika Eyecare Spring Boot API running on Lambda
+      CodeUri: target/api-lambda.jar # Path to the packaged application
+      Handler: com.nayonikaeyecare.api.StreamLambdaHandler::handleRequest
+      Runtime: java21
+      MemorySize: 512 # Adjust as needed
+      Timeout: 30 # Adjust as needed
+      Architectures:
+        - x86_64 # Or arm64 if preferred and built for it
+      Environment:
+        Variables:
+          # Example: Set Spring profiles or other environment variables
+          # SPRING_PROFILES_ACTIVE: lambda
+          JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1 # For faster cold starts
+      Events:
+        HttpApiEvent:
+          Type: HttpApi # Using HTTP API for better performance and lower cost than REST API
+          Properties:
+            Path: /{proxy+}
+            Method: any
+            # Alternatively, for a specific base path:
+            # Path: /api/{proxy+}
+            # If using $default route for all requests to the API root:
+            # ApiId: !Ref NayonikaHttpApi
+            # RouteId: $default # This requires creating AWS::Serverless::HttpApi resource explicitly
+
+Outputs:
+  NayonikaApiEndpoint:
+    Description: "API Gateway endpoint URL for Nayonika API Lambda"
+    Value: !Sub "https://execute-api.${AWS::Region}.amazonaws.com/Prod/" # This is a guess for REST API, HttpApi is different
+    # For HttpApi, the structure is: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+    # To get the correct HttpApi endpoint, it's better to refer to it after explicit HttpApi resource creation.
+    # For simplicity with implicit API creation, the endpoint is usually found in the AWS console after deployment.
+
+# To get the actual endpoint for an HttpApi created implicitly by AWS::Serverless::Function:
+# After deployment, check the AWS Lambda console or API Gateway console for the invoke URL.
+# Or, explicitly define the HttpApi:
+#
+#  NayonikaHttpApi:
+#    Type: AWS::Serverless::HttpApi
+#    Properties:
+#      StageName: Prod # Optional, default is $default
+#
+# And then in Outputs:
+#  NayonikaApiEndpoint:
+#    Description: "API Gateway endpoint URL for Nayonika API Lambda"
+#    Value: !Sub "https://${NayonikaHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+#
+# For now, the template relies on the implicit API created by the Function's event.
+# The user will need to retrieve the endpoint from the AWS console after deployment.
+# Adding a more specific output for HttpApi:
+  NayonikaHttpApiId:
+    Description: "ID of the HTTP API"
+    Value: !Ref ServerlessHttpApi # This intrinsic variable refers to the implicitly created HttpApi
+
+  NayonikaHttpApiEndpoint:
+    Description: "HTTP API endpoint URL"
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+
+# Note on CodeUri: If template.yaml is in 'api/' and jar is in 'api/target/',
+# then CodeUri can be 'target/api-lambda.jar'.
+# If the template is at the project root and CodeUri is relative to that, it would be 'api/target/api-lambda.jar'.
+# Assuming 'sam package' and 'sam deploy' are run from the 'api/' directory or CodeUri is adjusted.
+# For this setup, keeping template.yaml in 'api/' and CodeUri as 'target/api-lambda.jar' is common.
+# The build command would be something like:
+# cd api
+# mvn package
+# sam package --template-file template.yaml --s3-bucket YOUR_S3_BUCKET --output-template-file packaged.yaml
+# sam deploy --template-file packaged.yaml --stack-name NayonikaApiStack --capabilities CAPABILITY_IAM
+# (or sam deploy --guided)
+
+# The JAVA_TOOL_OPTIONS are recommended by AWS for optimizing Lambda cold start times with Java.
+# The HttpApiEvent uses a greedy path /{proxy+} and method any, effectively routing all requests.
+# If you need more fine-grained routing or specific authorizers, you'd expand the Events or HttpApi definition.
+ 
