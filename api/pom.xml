@@ -27,7 +27,7 @@
   <url/>
  </scm>
  <properties>
-  <java.version>24</java.version>
+  <java.version>21</java.version>
   <maven.compiler.proc>full</maven.compiler.proc>
  </properties>
  <dependencies>
@@ -144,10 +144,10 @@
     <artifactId>maven-compiler-plugin</artifactId>
     <version>3.13.0</version>
     <configuration>
-     <release>21</release> <!-- Explicitly target Java 21 for Lambda compatibility -->
+     <release>21</release>
      <compilerArgs>
-                        <arg>-proc:full</arg>
-                    </compilerArgs>
+      <arg>-proc:full</arg>
+     </compilerArgs>
      <annotationProcessorPaths>
       <path>
        <groupId>org.projectlombok</groupId>
@@ -156,13 +156,6 @@
       </path>
      </annotationProcessorPaths>
     </configuration>
-   </plugin>
-   <plugin>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-maven-plugin</artifactId>
-    <!-- <configuration> -->
-     <!-- <mainClass>com.nayonikaeyecare.api.ApiApplication</mainClass> -->
-    <!-- </configuration> -->
    </plugin>
    <plugin>
     <groupId>org.apache.maven.plugins</groupId>
@@ -191,10 +184,9 @@
        <resource>META-INF/spring.schemas</resource>
       </transformer>
       <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-      <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-       <mainClass>com.nayonikaeyecare.api.StreamLambdaHandler</mainClass> <!-- Entry point for Lambda -->
-      </transformer>
+      <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"/>
      </transformers>
+     <mainClass>com.nayonikaeyecare.api.StreamLambdaHandler</mainClass>
     </configuration>
     <executions>
      <execution>
