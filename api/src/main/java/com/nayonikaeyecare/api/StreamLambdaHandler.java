@@ -10,9 +10,12 @@ import com.amazonaws.services.lambda.runtime.RequestStreamHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 
 public class StreamLambdaHandler implements RequestStreamHandler {
     private static final Logger logger = LoggerFactory.getLogger(StreamLambdaHandler.class);
@@ -20,88 +23,46 @@ public class StreamLambdaHandler implements RequestStreamHandler {
 
     static {
         try {
-            // For applications that take longer than 10 seconds to start,
-            // increase the INIT_TIMEOUT environment variable.
-            // This can be set in the AWS Lambda console or in the SAM template.
-            // Default is 10 seconds.
-            // String initTimeout = System.getenv("INIT_TIMEOUT");
-            // long timeout = (initTimeout != null) ? Long.parseLong(initTimeout) : 10_000L;
-
-            logger.info("Initializing Spring Boot application for Lambda");
-            // For Spring Boot 2.x applications
-            // handler = SpringBootLambdaContainerHandler.getAwsProxyHandler(ApiApplication.class);
-
-            // For Spring Boot 3.x applications, use the following:
-            handler = SpringBootLambdaContainerHandler.getHttpApiV2ProxyHandler(ApiApplication.class);
-
-
-            // If you are using Spring Boot 3.x with a different base path, you might need:
-            // handler = SpringBootLambdaContainerHandler.getHttpApiV2ProxyHandler(ApiApplication.class, "/your-base-path");
-
-
-            // If you want to launch the Spring Boot application asynchronously, you can do this:
-            // handler.onStartup(servletContext -> {
-            //     // Perform any ServletContext initialization if needed
-            // });
-            // handler.initialize();
-
-
-            // If you need to register filters or servlets, you can do it here
-            // For example, to register a filter:
-            // handler.onStartup(servletContext -> {
-            //     FilterRegistration.Dynamic registration = servletContext.addFilter("myFilter", MyFilter.class);
-            //     registration.addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
-            // });
-
-            // To warm up the application, you can send a sample request
-            // This is optional and depends on your application's needs
-            // logger.info("Warming up the application...");
-            // AwsProxyRequest warmupRequest = new AwsProxyRequest();
-            // warmupRequest.setHttpMethod("GET");
-            // warmupRequest.setPath("/ping"); // Replace with an actual endpoint in your application
-            // handler.proxy(warmupRequest, null); // Context can be null for warmup
-            // logger.info("Warmup complete.");
-
+            handler = SpringBootLambdaContainerHandler.getAwsProxyHandler(ApiApplication.class);
         } catch (ContainerInitializationException e) {
-            // If you fail here. We re-throw the exception to force another cold start
-            logger.error("Could not initialize Spring Boot application", e);
-            throw new RuntimeException("Could not initialize Spring Boot application", e);
+            // if we fail here. We re-throw the exception to force another cold start
+            String errorMessage = "Could not initialize Spring Boot application";
+            logger.error(errorMessage, e);
+            throw new RuntimeException(errorMessage, e);
         }
     }
 
     public StreamLambdaHandler() {
-        // We enable the timer for debugging purposes.
-        // TODO: Consider removing or making configurable for production
-        Timer.enable();
+        // Constructor is called once per container.
+        // It's good practice to have a constructor, even if it's empty.
+        logger.info("StreamLambdaHandler initialized");
     }
 
     @Override
     public void handleRequest(InputStream inputStream, OutputStream outputStream, Context context)
             throws IOException {
-        handler.proxyStream(inputStream, outputStream, context);
-    }
+        logger.info("handleRequest");
+        logger.info("context: {}", context.toString());
 
-    // Simple Timer class for debugging purposes
-    // TODO: Consider removing or making this more robust if kept for production
-    private static class Timer {
-        private static long startTime;
-        private static boolean enabled = false;
-
-        public static void enable() {
-            enabled = true;
+        // Log the raw input stream
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        byte[] buffer = new byte[1024];
+        int len;
+        while ((len = inputStream.read(buffer)) > -1 ) {
+            baos.write(buffer, 0, len);
         }
+        baos.flush();
+        String rawEventPayload = new String(baos.toByteArray(), StandardCharsets.UTF_8);
+        logger.info("Raw event payload: {}", rawEventPayload);
 
-        public static void start() {
-            if (enabled) {
-                startTime = System.currentTimeMillis();
-            }
-        }
+        // Re-create the input stream for the handler
+        InputStream newInputStream = new ByteArrayInputStream(baos.toByteArray());
+        
+        // Log the new input stream and output stream for completeness, though less critical now
+        logger.info("inputStream (after logging): {}", newInputStream.toString());
+        logger.info("outputStream: {}", outputStream.toString());
 
-        public static void stop(String message) {
-            if (enabled) {
-                long endTime = System.currentTimeMillis();
-                logger.info(message + ": " + (endTime - startTime) + "ms");
-            }
-        }
+        handler.proxyStream(newInputStream, outputStream, context);
     }
 }
+ 
