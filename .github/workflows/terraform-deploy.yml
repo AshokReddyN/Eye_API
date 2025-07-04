@@ -1,0 +1,158 @@
+name: Deploy Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy (dev, qa, stg, prod)'
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - stg
+          - prod
+      aws_region:
+        description: 'AWS Region'
+        required: true
+        default: 'us-east-1'
+      s3_bucket_name_for_lambda_code:
+        description: 'S3 bucket for Lambda code (must exist)'
+        required: true
+
+jobs:
+  terraform:
+    name: 'Terraform Deploy ${{ github.event.inputs.environment }}'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./terraform
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ github.event.inputs.aws_region }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: "1.5.0" # Specify a version or let it use latest
+
+    - name: Terraform Init
+      id: init
+      run: terraform init -input=false
+      env:
+        AWS_BUCKET_NAME_FOR_TF_STATE: ${{ secrets.AWS_BUCKET_NAME_FOR_TF_STATE }} # Bucket for Terraform state
+        AWS_DYNAMODB_TABLE_FOR_TF_LOCK: ${{ secrets.AWS_DYNAMODB_TABLE_FOR_TF_LOCK }} # DynamoDB table for state locking
+      # The backend configuration can be passed via CLI arguments like this:
+      # run: |
+      #   terraform init \
+      #     -backend-config="bucket=${{ secrets.AWS_BUCKET_NAME_FOR_TF_STATE }}" \
+      #     -backend-config="key=terraform.tfstate" \ # Or some dynamic key per environment
+      #     -backend-config="region=${{ github.event.inputs.aws_region }}" \
+      #     -backend-config="dynamodb_table=${{ secrets.AWS_DYNAMODB_TABLE_FOR_TF_LOCK }}" \
+      #     -input=false
+      # Or, ensure you have a backend.tf file configured to use these environment variables or partial configuration.
+
+    - name: Terraform Validate
+      id: validate
+      run: terraform validate -no-color
+
+    - name: Terraform Plan
+      id: plan
+      run: |
+        terraform plan \
+          -var="environment=${{ github.event.inputs.environment }}" \
+          -var="aws_region=${{ github.event.inputs.aws_region }}" \
+          -var="s3_bucket_name_for_lambda_code=${{ github.event.inputs.s3_bucket_name_for_lambda_code }}" \
+          -out=tfplan \
+          -input=false
+      continue-on-error: true # Optional: to allow review of plan even if it fails
+
+    - name: Terraform Plan Status
+      if: steps.plan.outcome == 'failure'
+      run: |
+        echo "Terraform Plan failed!"
+        exit 1
+
+    # Add a manual approval step here if desired before applying
+    # - name: Manual Approval for Terraform Apply
+    #   if: success() && steps.plan.outputs.stdout != '' # Ensure plan was successful and generated output
+    #   uses: trstringer/manual-approval@v1
+    #   with:
+    #     secret: ${{ secrets.WORKFLOW_APPROVAL_TOKEN }} # A PAT or GitHub token with repo scope
+    #     approvers: "your-github-username" # Comma-separated list of GitHub usernames
+    #     minimum-approvals: 1
+    #     issue-title: "Terraform Apply Approval for ${{ github.event.inputs.environment }}"
+    #     issue-body: "Please approve or reject the Terraform plan for the ${{ github.event.inputs.environment }} environment."
+    #     exclude-workflow-initiator-as-approver: false
+
+
+    - name: Terraform Apply
+      id: apply
+      # if: success() && steps.plan.outcome == 'success' # Only run if plan was successful
+      run: terraform apply -auto-approve -input=false tfplan
+      # Or, if not using a plan file:
+      # run: |
+      #   terraform apply -auto-approve \
+      #     -var="environment=${{ github.event.inputs.environment }}" \
+      #     -var="aws_region=${{ github.event.inputs.aws_region }}" \
+      #     -var="s3_bucket_name_for_lambda_code=${{ github.event.inputs.s3_bucket_name_for_lambda_code }}" \
+      #     -input=false
+
+    # Example of how to output Terraform outputs
+    # - name: Get API Gateway URL
+    #   if: steps.apply.outcome == 'success'
+    #   run: |
+    #     API_URL=$(terraform output -raw api_gateway_invoke_url)
+    #     echo "API_URL=$API_URL" >> $GITHUB_ENV
+    #     echo "API Gateway URL: $API_URL"
+
+# Required secrets for this workflow:
+# AWS_ACCESS_KEY_ID: Your AWS access key ID.
+# AWS_SECRET_ACCESS_KEY: Your AWS secret access key.
+# AWS_BUCKET_NAME_FOR_TF_STATE: S3 bucket name for storing Terraform state. (Needed if using S3 backend)
+# AWS_DYNAMODB_TABLE_FOR_TF_LOCK: DynamoDB table name for Terraform state locking. (Needed if using S3 backend with locking)
+# WORKFLOW_APPROVAL_TOKEN (optional): A GitHub Personal Access Token with 'repo' scope if manual approval step is used.
+
+# Note:
+# For Terraform state management, it's highly recommended to use an S3 backend with DynamoDB for locking.
+# The example above assumes you might pass backend config via env vars or CLI.
+# A better way is to have a backend.tf file in your terraform directory:
+#
+# terraform/backend.tf
+# terraform {
+#   backend "s3" {
+#     # Variables like bucket, key, region, dynamodb_table can be provided
+#     # via -backend-config arguments in the init step or through environment variables
+#     # For example, if you set environment variables like TF_VAR_bucket, it won't be picked up here directly.
+#     # You need to explicitly pass them or use partial configuration.
+#     # Example for partial configuration (values provided during init):
+#     # bucket         = "" # To be provided by -backend-config="bucket=my-tf-state-bucket"
+#     # key            = "global/s3/terraform.tfstate" # To be provided
+#     # region         = "us-east-1" # To be provided
+#     # dynamodb_table = "" # To be provided by -backend-config="dynamodb_table=my-tf-lock-table"
+#   }
+# }
+#
+# And then in the workflow:
+#    - name: Terraform Init
+#      id: init
+#      run: |
+#        terraform init \
+#          -backend-config="bucket=${{ secrets.AWS_BUCKET_NAME_FOR_TF_STATE }}" \
+#          -backend-config="key=path/to/your/${{ github.event.inputs.environment }}/terraform.tfstate" \
+#          -backend-config="region=${{ github.event.inputs.aws_region }}" \
+#          -backend-config="dynamodb_table=${{ secrets.AWS_DYNAMODB_TABLE_FOR_TF_LOCK }}" \
+#          -input=false
+#
+# Ensure the S3 bucket for state and DynamoDB table for locking are created beforehand.
+# The `s3_bucket_name_for_lambda_code` input is for the bucket where the Lambda JAR will be stored,
+# distinct from the Terraform state bucket. This bucket must also exist prior to running the workflow.

@@ -1,0 +1,22 @@
+# Ignore Git and IDE files
+.git/
+.idea/
+*.tfstate
+*.tfstate.backup
+
+# Ignore local terraform plan files
+*.tfplan
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore crash log files
+crash.log
+crash.*.log
+
+# Ignore sensitive files if any (though these should ideally be handled by .gitignore at repo root)
+# secrets.tfvars
+# *.pem
+# *.key
+[end of terraform/.terraformignore]

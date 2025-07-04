@@ -1,0 +1,174 @@
+name: Build and Deploy Application
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy (dev, qa, stg, prod)'
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - stg
+          - prod
+      aws_region:
+        description: 'AWS Region'
+        required: true
+        default: 'us-east-1'
+      s3_bucket_name_for_lambda_code:
+        description: 'S3 bucket for Lambda code (must exist, same as in terraform workflow)'
+        required: true
+      # Add app_version if you tag releases and want to deploy a specific version
+      # app_version:
+      #   description: 'Application version to deploy (e.g., v1.0.0 or commit SHA)'
+      #   required: false
+      #   default: '' # Empty means use latest from current branch
+
+jobs:
+  build-and-deploy:
+    name: 'Build and Deploy to ${{ github.event.inputs.environment }}'
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write # Required for AWS OIDC authentication if used
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      # with:
+      #   ref: ${{ github.event.inputs.app_version || github.sha }} # Checkout specific tag/commit or current SHA
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} # Ensure these secrets are set in GitHub
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ github.event.inputs.aws_region }}
+        # Or use OIDC:
+        # role-to-assume: arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/your-github-actions-deployment-role
+        # aws-region: ${{ github.event.inputs.aws_region }}
+
+    - name: Set up JDK 24
+      uses: actions/setup-java@v4
+      with:
+        java-version: '24' # Must match <java.version> in pom.xml
+        distribution: 'temurin' # Or 'corretto', 'zulu', etc.
+
+    - name: Cache Maven packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+
+    - name: Build with Maven
+      working-directory: ./api
+      run: mvn clean package -DskipTests
+      # The pom.xml should be configured with maven-shade-plugin to produce the fat JAR
+      # The output JAR name might be like target/api-0.0.1-SNAPSHOT.jar or api-0.0.1-SNAPSHOT-aws.jar
+      # Ensure the JAR name is consistent.
+
+    - name: Identify JAR file
+      id: identify_jar
+      working-directory: ./api/target
+      run: |
+        # The Shade plugin might rename the original JAR and create one with a classifier or a different name.
+        # For example, if the original is api-0.0.1-SNAPSHOT.jar and shaded is api-0.0.1-SNAPSHOT-shaded.jar
+        # Or if the <finalName> is set in maven-shade-plugin or spring-boot-maven-plugin.
+        # We assume the primary artifact produced by `mvn package` is the one to deploy.
+        # Let's find the largest JAR file, typically the fat JAR.
+        # Or, if the Shade plugin renames the original, we might need to find that.
+        # For now, assuming a common pattern like 'appname-version.jar' or 'appname-version-aws.jar'
+        # The pom.xml currently does not specify a finalName or classifier for the shade plugin,
+        # so it will typically overwrite the original jar or create one with -shaded classifier
+        # if attach="false" is not used.
+        # The spring-boot-maven-plugin by default repackages the jar.
+        # The maven-shade-plugin execution is also there. This might result in two "fat" jars or specific naming.
+        # Let's assume the shade plugin produces the desired uber-jar.
+        # The ManifestResourceTransformer sets mainClass, so this JAR is intended to be executable.
+
+        # Based on current pom.xml, spring-boot-maven-plugin runs first, then maven-shade-plugin.
+        # spring-boot-maven-plugin will create the executable JAR.
+        # maven-shade-plugin will then take this JAR and rebuild it, applying transformations.
+        # The final JAR from shade should be the one. By default, it replaces the original JAR.
+
+        JAR_FILE_NAME=$(ls *.jar | grep -v 'original-' | head -n 1) # A simple heuristic
+        if [ -z "$JAR_FILE_NAME" ]; then
+          echo "No JAR file found or multiple non-original JARs. Please check build artifacts."
+          ls -l
+          exit 1
+        fi
+        echo "JAR_FILE_NAME=${JAR_FILE_NAME}" >> $GITHUB_ENV
+        echo "Identified JAR: ${JAR_FILE_NAME}"
+
+    - name: Upload JAR to S3
+      id: s3_upload
+      working-directory: ./api/target
+      env:
+        S3_BUCKET: ${{ github.event.inputs.s3_bucket_name_for_lambda_code }}
+        S3_KEY_PREFIX: "nayonika-api-${{ github.event.inputs.environment }}" # Matches Terraform s3_key
+        JAR_NAME: ${{ env.JAR_FILE_NAME }}
+      run: |
+        S3_KEY="${S3_KEY_PREFIX}/app.jar" # Fixed name 'app.jar' as expected by Terraform
+        aws s3 cp "${JAR_NAME}" "s3://${S3_BUCKET}/${S3_KEY}"
+        echo "Uploaded ${JAR_NAME} to s3://${S3_BUCKET}/${S3_KEY}"
+        echo "::set-output name=s3_key::$S3_KEY" # For potential use in other steps
+
+    - name: Update Lambda Function Code
+      id: lambda_update
+      env:
+        LAMBDA_FUNCTION_NAME: "nayonika-api-${{ github.event.inputs.environment }}-lambda" # Matches Terraform lambda function name
+        S3_BUCKET: ${{ github.event.inputs.s3_bucket_name_for_lambda_code }}
+        S3_KEY: ${{ steps.s3_upload.outputs.s3_key }}
+      run: |
+        echo "Updating Lambda function: ${LAMBDA_FUNCTION_NAME}"
+        aws lambda update-function-code \
+          --function-name "${LAMBDA_FUNCTION_NAME}" \
+          --s3-bucket "${S3_BUCKET}" \
+          --s3-key "${S3_KEY}" \
+          --publish # Optionally publish a new version
+
+        # Wait for the Lambda function to be updated
+        # This can take a few moments. Add a waiter to ensure the update is complete.
+        echo "Waiting for Lambda function update to complete..."
+        aws lambda wait function-updated \
+          --function-name "${LAMBDA_FUNCTION_NAME}"
+        echo "Lambda function update complete."
+
+    # Optional: If you need to update application-{env}.yml and package it specifically,
+    # that logic would go here before the 'Build with Maven' step.
+    # However, Spring Boot's profile mechanism (SPRING_PROFILES_ACTIVE) should handle this
+    # by picking the correct application-{env}.yml from the classpath if all are packaged.
+    # The current setup packages all application-*.yml files into the JAR.
+
+    - name: Deployment Summary
+      run: |
+        echo "Application deployment to ${{ github.event.inputs.environment }} completed."
+        echo "Lambda Function: nayonika-api-${{ github.event.inputs.environment }}-lambda"
+        echo "JAR deployed from: api/target/${{ env.JAR_FILE_NAME }}"
+        echo "S3 Location: s3://${{ github.event.inputs.s3_bucket_name_for_lambda_code }}/${{ steps.s3_upload.outputs.s3_key }}"
+
+# Required secrets for this workflow:
+# AWS_ACCESS_KEY_ID: Your AWS access key ID.
+# AWS_SECRET_ACCESS_KEY: Your AWS secret access key.
+# Or configure OIDC with AWS if preferred.
+
+# Notes:
+# - Ensure `s3_bucket_name_for_lambda_code` is the same bucket used in the Terraform configuration.
+# - The Lambda function name (`nayonika-api-${{ github.event.inputs.environment }}-lambda`) must match the one created by Terraform.
+# - The S3 key for the JAR (`nayonika-api-${{ github.event.inputs.environment }}/app.jar`) must also match Terraform.
+# - Java version in `setup-java` should align with your project's pom.xml.
+# - The "Identify JAR file" step uses a heuristic. If your build produces multiple JARs or has a specific naming convention
+#   for the final deployable JAR (e.g., with a classifier like 'aws' or 'lambda'), adjust this step accordingly.
+#   The current pom.xml has both spring-boot-maven-plugin and maven-shade-plugin. This can sometimes lead to
+#   complexities in identifying the correct final JAR. The Shade plugin is configured to transform and set a mainClass,
+#   so its output is likely the intended artifact. It usually overwrites the original JAR produced by earlier phases
+#   unless configured otherwise.
+# - Update of `application-{env}.yml`: The prompt mentioned "Update the application-{env}.yml file appropriately".
+#   Spring Boot automatically handles loading `application-{profile}.yml` when `SPRING_PROFILES_ACTIVE={profile}` is set.
+#   All `application-*.yml` files in `src/main/resources` are typically included in the JAR.
+#   If dynamic modification of these files is needed *during the workflow* before packaging,
+#   that would require additional steps (e.g., `sed` or a script) before the `mvn package` command.
+#   For now, I'm assuming the existing files are sufficient and selected via Spring Profiles.
