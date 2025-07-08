@@ -28,13 +28,38 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final UserDetailsService userDetailsService;
 
     @Value("${auth.excluded.path:#{T(java.util.Collections).emptyList()}}")
-    private List<String> excludedPaths;
+    private List<String> excludedPathsFromConfig;
+
+    @Value("${spring.profiles.active:dev}")
+    private String activeProfile;
+
+    private List<String> allExcludedPaths;
 
     public JwtAuthenticationFilter(JWTTokenProvider jwtTokenProvider, UserDetailsService userDetailsService) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.userDetailsService = userDetailsService;
     }
 
+    @jakarta.annotation.PostConstruct
+    public void init() {
+        // Combine statically configured paths with the dynamic one
+        // This ensures that this.allExcludedPaths is initialized after activeProfile is injected.
+        // Note: Swagger paths like /swagger-ui/** should use AntPathMatcher for robust matching,
+        // but for simplicity with startsWith, we'll keep it as is for now, assuming
+        // SecurityConfig handles the more precise matching for Spring Security layer.
+        // The primary goal here is to exclude the /<profile>/auth/** path from the JWT token check.
+        
+        // Ensure activeProfile is available. If not (e.g. in some test contexts without full app context), default.
+        String currentProfile = (this.activeProfile != null && !this.activeProfile.isEmpty()) ? this.activeProfile : "dev";
+        String dynamicAuthPathPrefix = "/" + currentProfile + "/auth"; 
+
+        this.allExcludedPaths = new java.util.ArrayList<>(excludedPathsFromConfig);
+        this.allExcludedPaths.add(dynamicAuthPathPrefix); 
+        // Add other paths that SecurityConfig permits and should not be JWT filtered if not already covered by broad patterns
+        // For example, if /v3/api-docs, /swagger-ui, /swagger-resources, /actuator are not covered by startsWith logic well enough
+        // from application.yml, they could be added here more explicitly or use a PathMatcher.
+        // The current `excludedPathsFromConfig` should cover these based on `application.yml`.
+    }
     /**
      * This method is called for every request to check if the request contains a
      * valid JWT token.
@@ -79,12 +104,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
         String pathString = request.getServletPath();
-        // Always skip /auth/health
-        if (pathString.equals("/auth/health")) {
+        String uriString = request.getRequestURI();
+        String openAuthPath = "/" + activeProfile + "/auth/";
+        String rootAuthPath = "/auth/";
+        System.out.println("shouldNotFilter: servletPath=" + pathString + ", requestURI=" + uriString);
+        if ((pathString != null && (pathString.startsWith(openAuthPath) || pathString.startsWith(rootAuthPath))) ||
+            (uriString != null && (uriString.startsWith(openAuthPath) || uriString.startsWith(rootAuthPath)))) {
             return true;
         }
-        // Also skip any configured excluded paths
-        return excludedPaths.stream().anyMatch(path -> pathString.startsWith(path));
+        return allExcludedPaths.stream().anyMatch(path ->
+            (pathString != null && pathString.startsWith(path)) ||
+            (uriString != null && uriString.startsWith(path))
+        );
     }
 
 }

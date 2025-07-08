@@ -17,7 +17,8 @@ import jakarta.validation.Valid;
 
 import java.util.List;
 
-@CrossOrigin(origins = {"http://localhost:3000","http://nayonika-user-management-dev-1511095685.ap-south-1.elb.amazonaws.com","http://nayonika-user-management-qa-580028363.ap-south-1.elb.amazonaws.com","http://nayonika-user-management-stg-1382154925.ap-south-1.elb.amazonaws.com"})
+@CrossOrigin(origins = {"http://localhost:3000","http://nayonika-user-management-dev-1511095685.ap-south-1.elb.amazonaws.com","http://nayonika-user-management-qa-580028363.ap-south-1.elb.amazonaws.com","http://nayonika-user-management-stg-1382154925.ap-south-1.elb.amazonaws.com",
+"https://d1vkdavcz76wk9.cloudfront.net","https://d1ly0bgal3oowh.cloudfront.net","https://dxsbwamx9jelm.cloudfront.net","https://d13hs8y0241ipp.cloudfront.net"})
 @RestController
 @RequestMapping("/api/patient")
 @RequiredArgsConstructor
