@@ -5,6 +5,7 @@ import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import lombok.AllArgsConstructor;
@@ -17,7 +18,8 @@ import java.util.ArrayList;
 @Document(value = "patients")
 @CompoundIndexes({
         @CompoundIndex(name = "ambassador_name", def = "{'ambassadorId': 1, 'name': 1}"),
-        @CompoundIndex(name = "state_city", def = "{'state': 1, 'city': 1}")
+        @CompoundIndex(name = "state_city", def = "{'state': 1, 'city': 1}"),
+        @CompoundIndex(name = "age_phone_gender_created_search", def = "{'ageSearchable': 1, 'phoneSearchable': 1, 'gender': 1, 'createdAt': -1}")
 })
 @NoArgsConstructor
 @AllArgsConstructor
@@ -33,8 +35,12 @@ public class Patient {
     private Gender gender; // MALE , FEMALE
     @EncryptedField
     private String age;
+    @Indexed
+    private String ageSearchable; // HMAC of age
     @EncryptedField
     private String phone;
+    @Indexed
+    private String phoneSearchable; // HMAC of phone
     @EncryptedField
     private String email;
     private String hospitalName;

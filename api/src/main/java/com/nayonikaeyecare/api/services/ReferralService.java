@@ -61,6 +61,7 @@ public class ReferralService {
     private final MongoTemplate mongoTemplate;
     private final VisionAmbassadorRepository visionAmbassadorRepository;
     private final UserRepository userRepository; // Added
+    private final HmacService hmacService; // Added
 
     @Transactional
     public ReferralResponse createReferral(ReferralRequest referralRequest) {
@@ -575,11 +576,16 @@ public class ReferralService {
             }
 
             String ageString = request.getAge() != null ? String.valueOf(request.getAge()) : null;
-            Optional<Patient> patientOpt = patientRepository.findFirstByAgeAndPhoneAndGenderOrderByCreatedAtDesc(ageString,
-                    request.getGuardianContact(), patientGender);
+            String ageSearchable = hmacService.generateHmac(ageString);
+            String phoneSearchable = hmacService.generateHmac(request.getGuardianContact());
+
+            Optional<Patient> patientOpt = patientRepository.findFirstByAgeSearchableAndPhoneSearchableAndGenderOrderByCreatedAtDesc(
+                    ageSearchable,
+                    phoneSearchable,
+                    patientGender);
             if (!patientOpt.isPresent()) {
-                log.warn("Patient not found for age: {}, phone: {}, gender: {}. Rejecting referral.", ageString,
-                        request.getGuardianContact(), patientGender);
+                log.warn("Patient not found for age (hash): {}, phone (hash): {}, gender: {}. Rejecting referral.", ageSearchable,
+                        phoneSearchable, patientGender);
                 rejectedList.add(new RejectedReferralInfo(request.getReferrals(), request.getGuardianContact(),
                         request.getGender(), request.getHospitalName()));
                 rejectedCount++;

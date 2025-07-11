@@ -25,6 +25,7 @@ public class PatientService {
 
     private final PatientRepository patientRepository;
     private final ReferralRepositoryImpl referralRepository;
+    private final HmacService hmacService; // Added
 
     public PatientResponse createPatient(PatientRequest request) {
         Patient patient = Patient.builder()
@@ -40,23 +41,34 @@ public class PatientService {
                 .state(request.getState())
                 .createdAt(new Date())
                 .updatedAt(new Date())
+                // Add HMAC fields before building
+                .ageSearchable(hmacService.generateHmac(request.getAge()))
+                .phoneSearchable(hmacService.generateHmac(request.getPhone()))
                 .build();
 
-                if(isDuplicatePatient(request)) {
+                if(isDuplicatePatient(request)) { // This duplicate check might need to use HMAC if phone is part of it
                     throw new ResourceMissingException("Patient already exists with the same phone, name and ambassadorId");
                 }
         Patient savedPatient = patientRepository.save(patient);
-        Patient decryptedPatient = patientRepository.findById(savedPatient.getId())
-            .orElseThrow(() -> new ResourceMissingException("Patient not found after save"));
+        // No need to decrypt here for the response, as PII listener handles decryption on load.
+        // The savedPatient object itself will have fields decrypted if accessed after save (due to listener behavior on load for findById).
+        // However, mapping should ideally use the entity that was just saved and had its fields (including encrypted ones) set.
+        // For safety and clarity, let's ensure the object returned from save() is used if it's complete,
+        // or re-fetch if there's any doubt about the state of 'savedPatient' object vs what's in DB.
+        // The current PII listener decrypts on load, so findById will return a decrypted object.
+        Patient fullyLoadedPatient = patientRepository.findById(savedPatient.getId())
+            .orElseThrow(() -> new ResourceMissingException("Patient not found after save and reload"));
 
-    return PatientMapper.mapToPatientResponse(decryptedPatient);
+    return PatientMapper.mapToPatientResponse(fullyLoadedPatient);
     }
 
     private boolean isDuplicatePatient(PatientRequest request) {
-        return patientRepository.findByPhoneAndNameAndAmbassadorId(
-                request.getPhone(),
+        // Use the searchable HMAC value for phone in duplicate checks
+        String phoneSearchable = hmacService.generateHmac(request.getPhone());
+        return patientRepository.findByNameAndAmbassadorIdAndPhoneSearchable(
                 request.getName(),
-                request.getAmbassadorId()).isPresent();
+                request.getAmbassadorId(),
+                phoneSearchable).isPresent();
     }
 
     public PatientResponse getPatientById(String id) {
@@ -167,7 +179,9 @@ public class PatientService {
         existingPatient.setAmbassadorId(request.getAmbassadorId());
         existingPatient.setGender(request.getGender());
         existingPatient.setAge(request.getAge());
+        existingPatient.setAgeSearchable(hmacService.generateHmac(request.getAge()));
         existingPatient.setPhone(request.getPhone());
+        existingPatient.setPhoneSearchable(hmacService.generateHmac(request.getPhone()));
         existingPatient.setEmail(request.getEmail());
         existingPatient.setHospitalName(request.getHospitalName());
         existingPatient.setStatus(request.getStatus());
@@ -208,5 +222,64 @@ public class PatientService {
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Invalid ObjectId format: " + id);
         }
+    }
+
+    @Transactional
+    public String migrateExistingPatientsToUseSearchableFields() {
+        long totalPatients = patientRepository.count();
+        long updatedCount = 0;
+        long skippedCount = 0;
+        int batchSize = 100; // Process in batches
+        int page = 0;
+
+        // Assuming HmacService is already injected and PatientRepository is available
+        // Also assuming MongoPiiEncryptionListener will decrypt age and phone upon loading
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, batchSize);
+        org.springframework.data.domain.Page<Patient> patientBatch;
+
+        do {
+            patientBatch = patientRepository.findAll(pageable);
+            if (patientBatch.hasContent()) {
+                List<Patient> patientsToUpdate = new java.util.ArrayList<>();
+                for (Patient patient : patientBatch.getContent()) {
+                    boolean needsUpdate = false;
+                    // Patient.age and Patient.phone will be decrypted here by MongoPiiEncryptionListener
+                    String currentAge = patient.getAge();
+                    String currentPhone = patient.getPhone();
+
+                    String newAgeSearchable = hmacService.generateHmac(currentAge);
+                    String newPhoneSearchable = hmacService.generateHmac(currentPhone);
+
+                    if (!java.util.Objects.equals(patient.getAgeSearchable(), newAgeSearchable)) {
+                        patient.setAgeSearchable(newAgeSearchable);
+                        needsUpdate = true;
+                    }
+                    if (!java.util.Objects.equals(patient.getPhoneSearchable(), newPhoneSearchable)) {
+                        patient.setPhoneSearchable(newPhoneSearchable);
+                        needsUpdate = true;
+                    }
+
+                    if (needsUpdate) {
+                        patientsToUpdate.add(patient);
+                    } else {
+                        skippedCount++;
+                    }
+                }
+                if (!patientsToUpdate.isEmpty()) {
+                    patientRepository.saveAll(patientsToUpdate);
+                    updatedCount += patientsToUpdate.size();
+                }
+            }
+            page++;
+            pageable = org.springframework.data.domain.PageRequest.of(page, batchSize);
+        } while (patientBatch.hasNext());
+
+        String summary = String.format("Patient migration completed. Total patients processed: %d. Updated: %d. Skipped (already up-to-date or no PII): %d.",
+                                       totalPatients, updatedCount, skippedCount);
+        // Log this summary
+        // Consider using Slf4j logger if available in the class
+        System.out.println(summary);
+        return summary;
     }
 }

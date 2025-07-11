@@ -24,3 +24,7 @@ logging:
 pii:
   encryption:
     key: ${PII_ENCRYPTION_KEY}
+
+app:
+  security:
+    hmac-secret-key: "your-super-secret-hmac-key-change-me-in-prod" # IMPORTANT: Change this in production and use env variables or Vault
