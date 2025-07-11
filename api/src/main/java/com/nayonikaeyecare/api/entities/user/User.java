@@ -1,5 +1,6 @@
 package com.nayonikaeyecare.api.entities.user;
 
+import com.nayonikaeyecare.api.pii.annotation.EncryptedField;
 import java.util.List;
 
 import org.bson.types.ObjectId;
@@ -40,18 +41,25 @@ public class User {
     @Id
     private ObjectId id;
 
+    @EncryptedField
     private String phoneNumber;
+    private String phoneNumberHash;
 
+    @EncryptedField
     private String email;
 
     private ObjectId userCredentialId; // UserCredential entity representing the user's credentials
 
+    @EncryptedField
     private String firstName;
 
+    @EncryptedField
     private String lastName;
 
+    @EncryptedField
     private String city; // Add this field
 
+    @EncryptedField
     private String state; // Add this field
 
     private UserStatus status;

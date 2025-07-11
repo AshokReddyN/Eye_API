@@ -20,3 +20,6 @@ auth:
 
 fast2sms:
   apikey: ${FAST2SMS_API_KEY}
+pii:
+  encryption:
+    key: ${PII_ENCRYPTION_KEY:B8gmQSVarw9sWLx2Mh5gS5Cj2Qp7nC5zTjLg8fVbZ7U=} # FOR DEVELOPMENT ONLY - REPLACE WITH SECURE KEY FROM ENV VAR

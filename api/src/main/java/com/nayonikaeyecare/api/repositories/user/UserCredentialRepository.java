@@ -9,4 +9,5 @@ import com.nayonikaeyecare.api.entities.user.UserCredential;
 @Repository
 public interface UserCredentialRepository extends MongoRepository<UserCredential, ObjectId> {
     UserCredential findByCredential(String credential);
+    UserCredential findByCredentialHash(String credentialHash);
 }
