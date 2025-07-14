@@ -10,8 +10,6 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import com.nayonikaeyecare.api.pii.annotation.EncryptionService;
-
 import java.net.URI;
 
 import static org.mockito.Mockito.*;
@@ -21,9 +19,6 @@ public class SmsServiceTest {
 
     @Mock
     private RestTemplate restTemplate;
-
-    @Mock
-    private EncryptionService encryptionService;
 
     @InjectMocks
     private SmsService smsService;
@@ -40,7 +35,7 @@ public class SmsServiceTest {
         // and apiKey is set before any test method runs.
         // @InjectMocks handles the restTemplate injection if the constructor is used.
         // For apiKey, @Value field needs to be set.
-        smsService = new SmsService(restTemplate, encryptionService); // Ensure constructor injection for RestTemplate
+        smsService = new SmsService(restTemplate); // Ensure constructor injection for RestTemplate
         ReflectionTestUtils.setField(smsService, "apiKey", testApiKey);
     }
 

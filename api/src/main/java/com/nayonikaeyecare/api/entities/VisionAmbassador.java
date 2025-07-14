@@ -23,7 +23,6 @@ import java.util.Date;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-import com.nayonikaeyecare.api.pii.annotation.EncryptedField;
 
 // @Document(value = "visionAmbassador")
 @Document(collection = "vision_ambassadors")
@@ -36,16 +35,11 @@ public class VisionAmbassador {
     @Id
     private ObjectId id;
     private String userId; // Add this line
-     @EncryptedField
     private String name;
     // private String email;
-     @EncryptedField
     private String phoneNumber;
-    private String phoneNumberHash;
     private boolean status;
-     @EncryptedField
     private String city;
-     @EncryptedField
     private String state;
     private String language;
     private Date createdAt;

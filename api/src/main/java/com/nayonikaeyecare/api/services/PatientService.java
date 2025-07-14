@@ -46,10 +46,7 @@ public class PatientService {
                     throw new ResourceMissingException("Patient already exists with the same phone, name and ambassadorId");
                 }
         Patient savedPatient = patientRepository.save(patient);
-        Patient decryptedPatient = patientRepository.findById(savedPatient.getId())
-            .orElseThrow(() -> new ResourceMissingException("Patient not found after save"));
-
-    return PatientMapper.mapToPatientResponse(decryptedPatient);
+        return PatientMapper.mapToPatientResponse(savedPatient);
     }
 
     private boolean isDuplicatePatient(PatientRequest request) {

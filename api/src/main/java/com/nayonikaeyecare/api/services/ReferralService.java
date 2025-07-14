@@ -120,9 +120,7 @@ public class ReferralService {
         } else {
             log.info("Referral ID: {}, has null VisionAmbassadorId.", savedReferral.getId());
         }
-        Referral decryptedReferral = referralRepository.findById(savedReferral.getId())
-        .orElseThrow(() -> new IllegalStateException("Referral not found after save"));
-        return referralMapper.toResponse(decryptedReferral, user, null, null);
+        return referralMapper.toResponse(savedReferral, user, null, null);
     }
 
     public List<ReferralResponse> getAllReferrals() {

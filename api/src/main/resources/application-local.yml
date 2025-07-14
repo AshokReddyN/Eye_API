@@ -3,7 +3,7 @@ spring:
     name: api
   data:
     mongodb:
-      uri: mongodb+srv://nayonikamanager:tsJq4RcfhTFIGHQB@nayonikaDev.1quayyj.mongodb.net/
+      uri: mongodb+srv://nayonikaeyecare:b7yjInwQUxCCghBT@nayonikacluster.fqrcfog.mongodb.net/nayonikaDev
       database: nayonikaDev
 server:
   port: 8081
@@ -16,7 +16,3 @@ auth:
     path: /auth,/v3/api-docs,/swagger-ui,/swagger-resources
 fast2sms:
   apikey: "ss"
-pii:
-  encryption:
-    key: "B8gmQSVarw9sWLx2Mh5gS5Cj2Qp7nC5zTjLg8fVbZ7U=" # FOR DEVELOPMENT ONLY - REPLACE WITH SECURE KEY FROM ENV VAR
-

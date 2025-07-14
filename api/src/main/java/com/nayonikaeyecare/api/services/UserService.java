@@ -26,9 +26,6 @@ import com.nayonikaeyecare.api.repositories.user.UserNotFoundException;
 import com.nayonikaeyecare.api.repositories.user.UserRepository;
 import com.nayonikaeyecare.api.repositories.user.UserSessionRepository;
 import com.nayonikaeyecare.api.security.JWTTokenProvider;
-import com.nayonikaeyecare.api.pii.annotation.EncryptionService;
-import com.nayonikaeyecare.api.services.HashService;
-
 import java.util.Date;
 // import com.nayonikaeyecare.api.entities.User; // Already imported via com.nayonikaeyecare.api.entities.user.User
 
@@ -45,8 +42,6 @@ public class UserService {
     private final UserSessionRepository userSessionRepository;
     private final JWTTokenProvider jwtTokenProvider;
     private final SmsService smsService;
-    private final EncryptionService encryptionService;
-    private final HashService hashService;
 
     /**
      * creates a new user in the system
@@ -57,13 +52,11 @@ public class UserService {
      */
 
     public void createUser(UserRequest userRequest) {
-        String phoneNumber = userRequest.phoneNumber();
-        String phoneNumberHash = hashService.hash(phoneNumber);
 
         User newUser = User.builder()
                 .firstName(userRequest.firstName())
                 .lastName(userRequest.lastName())
-                .phoneNumberHash(phoneNumberHash)
+                .phoneNumber(userRequest.phoneNumber())
                 .createdAt(new java.util.Date())
                 .status(UserStatus.ACTIVE)
                 .build();
@@ -91,9 +84,6 @@ public class UserService {
         }
         if (userRequest.phoneNumber() != null) {
             existingUser.setPhoneNumber(userRequest.phoneNumber());
-            // Also update the phoneNumberHash when phoneNumber is updated
-            String phoneNumberHash = hashService.hash(userRequest.phoneNumber());
-            existingUser.setPhoneNumberHash(phoneNumberHash);
         }
         if (userRequest.email() != null) {
             existingUser.setEmail(userRequest.email());
@@ -121,8 +111,7 @@ public class UserService {
         String credential = authenticationRequest.credential(); // This is the mobile number
 
         if ("WEB_PORTAL".equals(applicationCode)) {
-            String phoneNumberHash = hashService.hash(credential);
-            userRepository.findByPhoneNumberHash(phoneNumberHash)
+            userRepository.findByPhoneNumber(credential)
                     .orElseThrow(() -> new UserNotFoundException(
                             "User not found with the provided mobile number. Please contact the application administrator."));
             // If user exists, proceed with normal OTP logic
@@ -132,15 +121,14 @@ public class UserService {
         }
         // For MOBILE_APP, or if WEB_PORTAL user check passed, continue with existing logic
 
-        String credentialHash = hashService.hash(credential);
-        UserCredential userCredential = userCredentialRepository.findByCredentialHash(credentialHash);
+        UserCredential userCredential = userCredentialRepository.findByCredential(credential);
         boolean userCreated = false;
         if (userCredential == null) {
             // check if the user can be created for the application because of
             // autoregistration
             // Note: checkAndCreateUserForApplication itself throws exceptions if app code is invalid or auto-reg is off
             userCreated = checkAndCreateUserForApplication(authenticationRequest, userCredential);
-            userCredential = userCredentialRepository.findByCredentialHash(credentialHash);
+            userCredential = userCredentialRepository.findByCredential(credential);
         } else {
             // user credential already exists hence no need to create a new user
             // Check if phone number is null for existing user linked to this credential
@@ -151,7 +139,7 @@ public class UserService {
                 // This case should ideally not happen if data integrity is maintained
                 // (UserCredential exists but no corresponding User).
                 // If it does, treat as if user needs to be fully "created" or associated.
-                userCreated = true;
+                userCreated = true; 
             }
         }
 
@@ -159,7 +147,7 @@ public class UserService {
         if (userCredential != null) {
             String otp = generateOtp(credential); // Pass credential (mobile number)
             User user = userRepository.findByUserCredentialId(userCredential.getId());
-
+            
             // Ensure user is found, especially after potential creation.
             if (user == null) {
                 // This would indicate an issue with user creation logic or data consistency.
@@ -238,7 +226,7 @@ public class UserService {
         // Retrieve the full User object to get the phone number
         User fullUser = userRepository.findById(newUserSession.getUserId())
             .orElseThrow(() -> new UserNotFoundException("User not found for OTP resend with id: " + newUserSession.getUserId()));
-
+        
         if (fullUser.getPhoneNumber() != null && !fullUser.getPhoneNumber().isEmpty()) {
             smsService.sendOtp(fullUser.getPhoneNumber(), otp);
         }
@@ -277,18 +265,14 @@ public class UserService {
             if (application.isAllowAutoRegistration()) {
                 // User does not exist, but auto-registration is allowed for this application.
                 // Create a new user credential if it wasn't found before.
-                String credential = authenticationRequest.credential();
-                String credentialHash = hashService.hash(credential); // You need to implement hashService
                 UserCredential newUserCredential = UserCredential.builder()
-                        .credential(credential)
-                        .credentialHash(credentialHash)
+                        .credential(authenticationRequest.credential())
                         .build();
                 userCredentialRepository.save(newUserCredential);
                 // Create a new user with the provided details
                 User user = User.builder()
                         .userCredentialId(newUserCredential.getId())
                         .phoneNumber(newUserCredential.getCredential()) // Set phone number from credential
-                        .phoneNumberHash(hashService.hash(newUserCredential.getCredential()))
                         .createdAt(new java.util.Date())
                         .status(UserStatus.ACTIVE) // Default status
                         .build();

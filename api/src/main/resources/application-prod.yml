@@ -16,7 +16,3 @@ auth:
 
 fast2sms:
   apikey: ${FAST2SMS_API_KEY}
-
-pii:
-  encryption:
-    key: ${PII_ENCRYPTION_KEY}

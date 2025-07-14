@@ -8,7 +8,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import com.nayonikaeyecare.api.pii.annotation.EncryptedField;
 
 @Document(collection = "user_credentials")
 @NoArgsConstructor
@@ -24,8 +23,6 @@ public class UserCredential {
     @Id
     private ObjectId id;
 
-    @EncryptedField
     private String credential;
-    private String credentialHash;
     private String secret;
 }

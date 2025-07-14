@@ -1,13 +1,17 @@
 spring:
   data:
     mongodb:
-      uri: mongodb+srv://nayonikaeyecare:b7yjInwQUxCCghBT@nayonikacluster.fqrcfog.mongodb.net/nayonikaDev
-      database: nayonikaDev
+      uri: ${MONGODB_URI}
+      database: ${MONGODB_DATABASE}
 server:
-  port: 8084
-
+  port: 8080
+logging:
+  level:
+    root: INFO
+    com:
+      nayonikaeyecare: INFO
 jwt:
-  secret: "thisisasecretkeythatis32byteslongButNotReallyAndItShouldBeKeptSecret"
+  secret: ${JWT_SECRET}
   expiration: 3600
 
 auth:
@@ -16,7 +20,3 @@ auth:
 
 fast2sms:
   apikey: ${FAST2SMS_API_KEY}
-
-pii:
-  encryption:
-    key: ${PII_ENCRYPTION_KEY}

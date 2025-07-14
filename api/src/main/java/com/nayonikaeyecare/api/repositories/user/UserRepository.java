@@ -21,8 +21,4 @@ public interface UserRepository extends MongoRepository<User, ObjectId> {
     User findByUserCredentialId(ObjectId userCredential);
 
     java.util.Optional<User> findByPhoneNumber(String phoneNumber);
-    // In UserRepository.java
-    java.util.Optional<User> findByPhoneNumberHash(String phoneNumberHash);
-
-
 }
